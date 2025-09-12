@@ -2,7 +2,32 @@ import streamlit as st
 import pandas as pd
 from db_utils import list_companies, add_company, delete_company
 
+# Agregar al inicio de ui_inicio.py:
+from backup_ui import mostrar_panel_backup_simple, mostrar_estado_backup_sidebar
 
+# En tu función pantalla_inicio(), agregar esto donde quieras mostrar el panel:
+
+def pantalla_inicio():
+    # ... tu código existente ...
+    
+    # Mostrar estado en sidebar
+    mostrar_estado_backup_sidebar()
+    
+    # Agregar tabs para organizar mejor
+    tab1, tab2, tab3 = st.tabs(["🏠 Inicio", "🔄 Backups", "⚙️ Configuración"])
+    
+    with tab1:
+        # Tu contenido actual de inicio aquí
+        pass
+    
+    with tab2:
+        mostrar_panel_backup_simple()
+    
+    with tab3:
+        # Otras configuraciones
+        st.info("Panel de configuraciones - próximamente")
+    
+    # ... resto de tu código ...
 
 
 st.markdown("""
@@ -839,3 +864,4 @@ def pantalla_inicio():
             if st.button("▶", key="right_arrow", help="Más empresas"):
                 st.session_state.empresa_index = min(len(empresas) - 3, start_idx + 3)
                 st.rerun()
+
