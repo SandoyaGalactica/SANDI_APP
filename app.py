@@ -84,3 +84,31 @@ def main():
 if __name__ == "__main__":
 
     main()
+
+
+def init_session_state():
+    """Inicializar todas las variables de sesión"""
+    defaults = {
+        "logged_in": False,
+        "theme_mode": "Light", 
+        "show_menu": False,
+        "empresa_index": 0,
+        "empresa_activa": None,
+        "empresa_activa_nombre": None,
+        # Agregar más según vayan apareciendo errores
+    }
+    
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+def main():
+    init_session_state()  # Inicializar todo de una vez
+    
+    if not st.session_state["logged_in"]:
+        login_screen()
+    else:
+        if "empresa_activa" in st.session_state and "empresa_activa_nombre" in st.session_state:
+            pantalla_empresa(st.session_state.empresa_activa, st.session_state.empresa_activa_nombre)
+        else:
+            pantalla_inicio()
