@@ -18,6 +18,23 @@ from controles_module import mostrar_controles_enhanced
 # Al inicio de tu aplicación
 optimize_db_connection()
 
+def initialize_session_state():
+    """Inicializar todas las variables de session_state necesarias"""
+    session_vars = {
+        "logged_in": False,
+        "show_menu": False,
+        "empresa_index": 0,
+        "theme_mode": "Light",
+        "username": "",
+        "empresa_activa": None,
+        "empresa_activa_nombre": "",
+        # Agregar aquí cualquier otra variable que uses en tu aplicación
+    }
+    
+    for key, default_value in session_vars.items():
+        if key not in st.session_state:
+            st.session_state[key] = default_value
+
 # -------- LOGIN -------- #
 def login_screen():
     st.set_page_config(page_title="S.A.N.D.I", layout="wide")
@@ -62,19 +79,17 @@ def login_screen():
     st.markdown("</div>", unsafe_allow_html=True)
 
 def main():
-    # Inicializar variables de sesión
-    if "logged_in" not in st.session_state:
-        st.session_state["logged_in"] = False
-    
-    # Inicializar theme_mode para evitar errores
-    if "theme_mode" not in st.session_state:
-        st.session_state["theme_mode"] = "Light"
+    # Inicializar session_state como primera acción
+    initialize_session_state()
 
     if not st.session_state["logged_in"]:
         login_screen()
     else:
         # Verificar si hay una empresa activa seleccionada
-        if "empresa_activa" in st.session_state and "empresa_activa_nombre" in st.session_state:
+        if ("empresa_activa" in st.session_state and 
+            st.session_state["empresa_activa"] is not None and
+            "empresa_activa_nombre" in st.session_state and
+            st.session_state["empresa_activa_nombre"]):
             pantalla_empresa(st.session_state.empresa_activa, st.session_state.empresa_activa_nombre)
         else:
             pantalla_inicio()
