@@ -15,7 +15,6 @@ from ui_empresa import pantalla_empresa
 from db_utils import optimize_db_connection
 from controles_module import mostrar_controles_enhanced
 
-
 # Al inicio de tu aplicación
 optimize_db_connection()
 
@@ -70,12 +69,6 @@ def main():
     # Inicializar theme_mode para evitar errores
     if "theme_mode" not in st.session_state:
         st.session_state["theme_mode"] = "Light"
-    
-    # Inicializar variables necesarias para UI
-    if "show_menu" not in st.session_state:
-        st.session_state["show_menu"] = False
-    if "empresa_index" not in st.session_state:
-        st.session_state["empresa_index"] = 0
 
     if not st.session_state["logged_in"]:
         login_screen()
@@ -86,3 +79,5 @@ def main():
         else:
             pantalla_inicio()
 
+if __name__ == "__main__":
+    main()
