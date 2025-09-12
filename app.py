@@ -60,32 +60,6 @@ def login_screen():
                 st.error("Credenciales incorrectas")
     st.markdown("</div>", unsafe_allow_html=True)
 
-def main():
-    # Inicializar variables de sesión
-    if "logged_in" not in st.session_state:
-        st.session_state["logged_in"] = False
-    
-    # Inicializar theme_mode para evitar errores
-    if "theme_mode" not in st.session_state:
-        st.session_state["theme_mode"] = "Light"
-        
-    if "show_menu" not in st.session_state:
-        st.session_state.show_menu = False
-     
-    if not st.session_state["logged_in"]:
-        login_screen()
-    else:
-        # Verificar si hay una empresa activa seleccionada
-        if "empresa_activa" in st.session_state and "empresa_activa_nombre" in st.session_state:
-            pantalla_empresa(st.session_state.empresa_activa, st.session_state.empresa_activa_nombre)
-        else:
-            pantalla_inicio()
-
-if __name__ == "__main__":
-
-    main()
-
-
 def init_session_state():
     """Inicializar todas las variables de sesión"""
     defaults = {
@@ -95,7 +69,15 @@ def init_session_state():
         "empresa_index": 0,
         "empresa_activa": None,
         "empresa_activa_nombre": None,
-        # Agregar más según vayan apareciendo errores
+        "username": None,
+        "current_page": "inicio",
+        "selected_company_id": None,
+        "show_modal": False,
+        "modal_type": None,
+        "editing_company": False,
+        "company_to_edit": None,
+        "show_empresa_modal": False,
+        "nueva_empresa_data": {},
     }
     
     for key, value in defaults.items():
@@ -108,7 +90,8 @@ def main():
     if not st.session_state["logged_in"]:
         login_screen()
     else:
-        if "empresa_activa" in st.session_state and "empresa_activa_nombre" in st.session_state:
+        if st.session_state.empresa_activa and st.session_state.empresa_activa_nombre:
             pantalla_empresa(st.session_state.empresa_activa, st.session_state.empresa_activa_nombre)
         else:
             pantalla_inicio()
+
