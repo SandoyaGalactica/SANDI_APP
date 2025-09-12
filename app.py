@@ -70,6 +70,14 @@ def main():
     # Inicializar theme_mode para evitar errores
     if "theme_mode" not in st.session_state:
         st.session_state["theme_mode"] = "Light"
+    
+    # Inicializar show_menu para evitar errores
+    if "show_menu" not in st.session_state:
+        st.session_state["show_menu"] = False
+    
+    # Inicializar empresa_index para evitar errores
+    if "empresa_index" not in st.session_state:
+        st.session_state["empresa_index"] = 0
 
     if not st.session_state["logged_in"]:
         login_screen()
@@ -79,6 +87,3 @@ def main():
             pantalla_empresa(st.session_state.empresa_activa, st.session_state.empresa_activa_nombre)
         else:
             pantalla_inicio()
-
-if __name__ == "__main__":
-    main()
