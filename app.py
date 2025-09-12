@@ -79,27 +79,38 @@ def login_screen():
         st.markdown("### Iniciar Sesión")
         username = st.text_input("Usuario", key="login_user")
         password = st.text_input("Contraseña", type="password", key="login_pass")
+        
         if st.button("Ingresar", use_container_width=True):
-            # Obtener credenciales desde secrets
             try:
+                # Obtener credenciales SOLO desde secrets
                 valid_username = st.secrets["authentication"]["admin_username"]
                 valid_password = st.secrets["authentication"]["admin_password"]
                 
                 if username == valid_username and password == valid_password:
                     st.session_state["logged_in"] = True
                     st.session_state["username"] = username
+                    st.success("✅ Login exitoso!")
                     st.rerun()
                 else:
-                    st.error("Credenciales incorrectas")
-            except KeyError:
-                # Fallback por si no están configurados los secrets
-                if username == "admin" and password == "123":
-                    st.session_state["logged_in"] = True
-                    st.session_state["username"] = username
-                    st.warning("⚠️ Usando credenciales por defecto. Configura secrets para mayor seguridad.")
-                    st.rerun()
+                    st.error("❌ Credenciales incorrectas")
+                    
+            except KeyError as e:
+                st.error(f"❌ Error de configuración: {str(e)}")
+                st.info("💡 Revisa la configuración de secrets en Streamlit Cloud")
+                
+                # Mostrar qué secrets faltan
+                if "authentication" not in st.secrets:
+                    st.warning("⚠️ Falta sección [authentication] en secrets")
                 else:
-                    st.error("Credenciales incorrectas")
+                    missing_keys = []
+                    if "admin_username" not in st.secrets["authentication"]:
+                        missing_keys.append("admin_username")
+                    if "admin_password" not in st.secrets["authentication"]:
+                        missing_keys.append("admin_password")
+                    
+                    if missing_keys:
+                        st.warning(f"⚠️ Faltan claves en secrets: {', '.join(missing_keys)}")
+    
     st.markdown("</div>", unsafe_allow_html=True)
 
 def main():
@@ -120,3 +131,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
