@@ -1,0 +1,23 @@
+# PyInstaller files (no necesarios para Streamlit Cloud)
+main.py
+run_app.py
+launcher.py
+*.spec
+Ejecutar_App.bat
+build/
+dist/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Sistema
+.env
+.DS_Store
+.vscode/
+
+# Ejecutables innecesarios
+pyinstaller*
+altgraph*
+pefile*
+pywin32*
