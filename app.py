@@ -18,6 +18,15 @@ from controles_module import mostrar_controles_enhanced
 # Al inicio de tu aplicación
 optimize_db_connection()
 
+# Inicializar sistema de backup
+try:
+    from db_utils import setup_database_with_backup
+    setup_database_with_backup()
+except ImportError:
+    print("⚠️ Sistema de backup no disponible")
+except Exception as e:
+    print(f"⚠️ Error inicializando backup: {str(e)}")
+
 def initialize_session_state():
     """Inicializar todas las variables de session_state necesarias"""
     session_vars = {
@@ -53,8 +62,9 @@ def login_screen():
     """, unsafe_allow_html=True)
 
     # Encabezado
+    app_name = st.secrets.get("app_config", {}).get("app_name", "S.A.N.D.I")
     st.markdown(
-        "<h1 style='text-align:center; margin-top: 50px;'>S.A.N.D.I</h1>",
+        f"<h1 style='text-align:center; margin-top: 50px;'>{app_name}</h1>",
         unsafe_allow_html=True
     )
     st.markdown(
@@ -70,12 +80,26 @@ def login_screen():
         username = st.text_input("Usuario", key="login_user")
         password = st.text_input("Contraseña", type="password", key="login_pass")
         if st.button("Ingresar", use_container_width=True):
-            if username == "admin" and password == "123":
-                st.session_state["logged_in"] = True
-                st.session_state["username"] = username
-                st.rerun()
-            else:
-                st.error("Credenciales incorrectas")
+            # Obtener credenciales desde secrets
+            try:
+                valid_username = st.secrets["authentication"]["admin_username"]
+                valid_password = st.secrets["authentication"]["admin_password"]
+                
+                if username == valid_username and password == valid_password:
+                    st.session_state["logged_in"] = True
+                    st.session_state["username"] = username
+                    st.rerun()
+                else:
+                    st.error("Credenciales incorrectas")
+            except KeyError:
+                # Fallback por si no están configurados los secrets
+                if username == "admin" and password == "123":
+                    st.session_state["logged_in"] = True
+                    st.session_state["username"] = username
+                    st.warning("⚠️ Usando credenciales por defecto. Configura secrets para mayor seguridad.")
+                    st.rerun()
+                else:
+                    st.error("Credenciales incorrectas")
     st.markdown("</div>", unsafe_allow_html=True)
 
 def main():
