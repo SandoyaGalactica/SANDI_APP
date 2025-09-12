@@ -68,7 +68,10 @@ def main():
     # Inicializar theme_mode para evitar errores
     if "theme_mode" not in st.session_state:
         st.session_state["theme_mode"] = "Light"
-
+        
+    if "show_menu" not in st.session_state:
+        st.session_state.show_menu = False
+     
     if not st.session_state["logged_in"]:
         login_screen()
     else:
@@ -79,4 +82,5 @@ def main():
             pantalla_inicio()
 
 if __name__ == "__main__":
+
     main()
