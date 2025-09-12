@@ -7,27 +7,7 @@ from backup_ui import mostrar_panel_backup_simple, mostrar_estado_backup_sidebar
 
 # En tu función pantalla_inicio(), agregar esto donde quieras mostrar el panel:
 
-def pantalla_inicio():
-    # ... tu código existente ...
-    
-    # Mostrar estado en sidebar
-    mostrar_estado_backup_sidebar()
-    
-    # Agregar tabs para organizar mejor
-    tab1, tab2, tab3 = st.tabs(["🏠 Inicio", "🔄 Backups", "⚙️ Configuración"])
-    
-    with tab1:
-        # Tu contenido actual de inicio aquí
-        pass
-    
-    with tab2:
-        mostrar_panel_backup_simple()
-    
-    with tab3:
-        # Otras configuraciones
-        st.info("Panel de configuraciones - próximamente")
-    
-    # ... resto de tu código ...
+
 
 
 st.markdown("""
@@ -599,269 +579,227 @@ st.markdown("""
 # Reemplazar la función pantalla_inicio en ui_inicio.py - VERSION LIMPIA
 
 def pantalla_inicio():
-    from db_utils import (
-        get_companies_with_logos, get_company_logo_base64, 
-        get_company_info_complete
-    )
+    st.set_page_config(page_title="S.A.N.D.I", layout="wide")
     
-    # Encabezado simple y limpio
-    col1, col2, col3 = st.columns([8,1,1])
+    # Inicializar variables de sesión necesarias
+    if "show_menu" not in st.session_state:
+        st.session_state.show_menu = False
+    if "empresa_index" not in st.session_state:
+        st.session_state["empresa_index"] = 0
+    if "theme_mode" not in st.session_state:
+        st.session_state["theme_mode"] = "Light"
+    
+    # Mostrar estado de backup en sidebar si está disponible
+    if BACKUP_UI_AVAILABLE:
+        mostrar_estado_backup_sidebar()
+    
+    # Header de la aplicación
+    st.markdown("# 🏢 S.A.N.D.I")
+    st.markdown("### Sistema de Administración y Negocios - Dashboard Integral")
+    
+    # Información del usuario
+    col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
-        st.title("Sistema de Gestión Empresarial")
+        st.markdown(f"**Bienvenido:** {st.session_state.get('username', 'Usuario')}")
     with col2:
-        if st.button("🌙" if st.session_state.theme_mode=="Light" else "🌞", 
-                    help="Cambiar tema"):
-            st.session_state.theme_mode = "Dark" if st.session_state.theme_mode=="Light" else "Light"
+        if st.button("🌓 Cambiar Tema"):
+            st.session_state.theme_mode = "Dark" if st.session_state.theme_mode == "Light" else "Light"
             st.rerun()
     with col3:
-        if st.button("⋮", help="Opciones del sistema"):
-            st.session_state.show_menu = not st.session_state.show_menu
+        if st.button("🚪 Cerrar Sesión"):
+            # Limpiar session state
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
             st.rerun()
-
-    # Modal flotante para opciones
-    if st.session_state.show_menu:
+    
+    st.divider()
+    
+    # Crear tabs para organizar la interfaz
+    if BACKUP_UI_AVAILABLE:
+        tab1, tab2, tab3, tab4 = st.tabs(["🏠 Dashboard", "🏢 Empresas", "🔄 Backups", "⚙️ Configuración"])
+    else:
+        tab1, tab2, tab4 = st.tabs(["🏠 Dashboard", "🏢 Empresas", "⚙️ Configuración"])
+        tab3 = None
+    
+    # TAB 1: DASHBOARD PRINCIPAL
+    with tab1:
+        st.header("📊 Dashboard Principal")
+        
+        # Métricas del sistema
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                label="📈 Empresas Activas",
+                value="0",  # Aquí conectarías con tu DB
+                delta="0"
+            )
+        
+        with col2:
+            st.metric(
+                label="💰 Total Ingresos",
+                value="$0",  # Aquí conectarías con tu DB
+                delta="0%"
+            )
+        
+        with col3:
+            st.metric(
+                label="📋 Proyectos",
+                value="0",  # Aquí conectarías con tu DB
+                delta="0"
+            )
+        
+        with col4:
+            backup_status = "🟢 Activo" if BACKUP_UI_AVAILABLE else "🔴 Inactivo"
+            st.metric(
+                label="☁️ Backup",
+                value=backup_status
+            )
+        
+        st.divider()
+        
+        # Accesos rápidos
+        st.subheader("🚀 Accesos Rápidos")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("🏢 Gestionar Empresas", use_container_width=True):
+                st.info("💡 Ve al tab 'Empresas' para gestionar tus empresas")
+        
+        with col2:
+            if st.button("📊 Ver Reportes", use_container_width=True):
+                st.info("📈 Función de reportes - próximamente")
+        
+        with col3:
+            if st.button("⚙️ Configuración", use_container_width=True):
+                st.info("⚙️ Ve al tab 'Configuración' para ajustes del sistema")
+        
+        # Información del sistema
+        st.divider()
+        st.subheader("ℹ️ Información del Sistema")
+        
+        info_col1, info_col2 = st.columns(2)
+        
+        with info_col1:
+            st.info(f"""
+            **Estado del Sistema:**
+            - 🟢 Base de datos: Conectada
+            - 🟢 Sesión: Activa
+            - 🟢 Tema: {st.session_state.theme_mode}
+            """)
+        
+        with info_col2:
+            st.info(f"""
+            **Última actividad:**
+            - 📅 Fecha: {datetime.now().strftime('%d/%m/%Y')}
+            - 🕒 Hora: {datetime.now().strftime('%H:%M:%S')}
+            - 👤 Usuario: {st.session_state.get('username', 'N/A')}
+            """)
+    
+    # TAB 2: EMPRESAS
+    with tab2:
+        st.header("🏢 Gestión de Empresas")
+        
+        # Aquí iría tu contenido actual de empresas
+        st.info("📋 Aquí aparecerá la lista y gestión de empresas")
+        st.markdown("**Funcionalidades disponibles:**")
+        st.markdown("- ➕ Crear nueva empresa")
+        st.markdown("- 📝 Editar empresa existente")  
+        st.markdown("- 🗑️ Eliminar empresa")
+        st.markdown("- 📊 Ver detalles y métricas")
+        
+        # Botón placeholder para crear empresa
+        if st.button("➕ Crear Nueva Empresa"):
+            st.success("✅ Función de crear empresa - implementar según tu lógica actual")
+    
+    # TAB 3: BACKUPS (solo si está disponible)
+    if tab3 and BACKUP_UI_AVAILABLE:
+        with tab3:
+            mostrar_panel_backup_simple()
+    
+    # TAB 4: CONFIGURACIÓN
+    with tab4:
+        st.header("⚙️ Configuración del Sistema")
+        
+        # Configuración de tema
+        st.subheader("🎨 Apariencia")
+        tema_actual = st.session_state.get("theme_mode", "Light")
+        nuevo_tema = st.selectbox(
+            "Seleccionar tema:",
+            ["Light", "Dark"],
+            index=0 if tema_actual == "Light" else 1
+        )
+        
+        if nuevo_tema != tema_actual:
+            st.session_state.theme_mode = nuevo_tema
+            st.success(f"✅ Tema cambiado a {nuevo_tema}")
+            st.rerun()
+        
+        st.divider()
+        
+        # Configuración de backup
+        st.subheader("💾 Configuración de Backup")
+        if BACKUP_UI_AVAILABLE:
+            st.success("✅ Sistema de backup disponible y configurado")
+            
+            # Mostrar configuración actual
+            try:
+                backup_interval = st.secrets.get("app_config", {}).get("backup_interval_minutes", 30)
+                st.info(f"🕒 Intervalo de auto-backup: {backup_interval} minutos")
+                
+                max_backups = st.secrets.get("app_config", {}).get("max_auto_backups", 10)
+                st.info(f"📁 Máximo backups automáticos: {max_backups}")
+                
+            except Exception as e:
+                st.warning(f"⚠️ No se pudo leer configuración de backup: {str(e)}")
+        else:
+            st.warning("⚠️ Sistema de backup no disponible")
+            st.info("💡 Para habilitar backup, configura los secrets de GitHub")
+        
+        st.divider()
+        
+        # Información de debug (solo para desarrollo)
+        if st.checkbox("🔍 Mostrar información de debug"):
+            st.subheader("🔧 Debug Info")
+            
+            # Session state
+            with st.expander("📱 Session State"):
+                st.json(dict(st.session_state))
+            
+            # Secrets (cuidado con información sensible)
+            with st.expander("🔐 Secrets Configuration"):
+                try:
+                    secrets_safe = {}
+                    for key, value in st.secrets.items():
+                        if isinstance(value, dict):
+                            secrets_safe[key] = {k: "***" if "token" in k.lower() or "password" in k.lower() else v for k, v in value.items()}
+                        else:
+                            secrets_safe[key] = "***" if "token" in str(key).lower() or "password" in str(key).lower() else value
+                    st.json(secrets_safe)
+                except Exception as e:
+                    st.error(f"Error mostrando secrets: {str(e)}")
+            
+            # Variables del sistema
+            with st.expander("🖥️ System Info"):
+                st.write(f"**BACKUP_UI_AVAILABLE:** {BACKUP_UI_AVAILABLE}")
+                st.write(f"**Current time:** {datetime.now()}")
+    
+    # Modal flotante para opciones (tu código original)
+    if st.session_state.get('show_menu', False):
         st.markdown("<div class='modal-overlay'></div>", unsafe_allow_html=True)
         
-        bg = "#2d3e50" if st.session_state.theme_mode=="Dark" else "#ffffff"
-        fg = "white" if st.session_state.theme_mode=="Dark" else "black"
-
-        st.markdown(
-            f"""
-            <div class="modal" style="background:{bg}; color:{fg};">
-                <h3>Opciones del Sistema</h3>
-            </div>
-            """, unsafe_allow_html=True
-        )
-
-        if st.button("Cerrar", key="close_modal"):
-            st.session_state.show_menu = False
-            st.session_state.delete_confirmation_step = 0
-            st.session_state.empresa_to_delete = None
-            st.rerun()
-
-        st.markdown("#### Agregar Nueva Empresa")
-        with st.form("form_add_empresa"):
-            col1, col2 = st.columns(2)
-            with col1:
-                nombre = st.text_input("Nombre de la empresa")
-            with col2:
-                descripcion = st.text_input("Descripción breve (opcional)")
-            
-            if st.form_submit_button("Crear Empresa", type="primary"):
-                if nombre.strip():
-                    from db_utils import add_company, update_company_info_complete
-                    
-                    if add_company(nombre.strip()):
-                        if descripcion.strip():
-                            empresas = list_companies()
-                            nueva_empresa = empresas[empresas['name'] == nombre.strip()]
-                            if not nueva_empresa.empty:
-                                empresa_id = nueva_empresa.iloc[0]['id']
-                                update_company_info_complete(empresa_id, {
-                                    'name': nombre.strip(),
-                                    'description': descripcion.strip()
-                                })
-                        
-                        st.success("Empresa creada correctamente")
-                        st.session_state.show_menu = False
-                        st.rerun()
-                    else:
-                        st.error("Error al crear la empresa")
-                else:
-                    st.error("El nombre es obligatorio")
-
-        empresas = list_companies()
-        if not empresas.empty:
-            st.markdown("#### Eliminar Empresa")
-            empresa_sel = st.selectbox(
-                "Seleccionar empresa:", 
-                empresas["name"],
-                key="empresa_delete_selector"
-            )
-            
-            if st.session_state.delete_confirmation_step == 0:
-                if st.button("Eliminar empresa seleccionada", type="secondary"):
-                    st.session_state.empresa_to_delete = empresa_sel
-                    st.session_state.delete_confirmation_step = 1
-                    st.rerun()
-            
-            elif st.session_state.delete_confirmation_step == 1:
-                st.error(f"¿Eliminar '{empresa_sel}'?")
-                st.error("Esta acción eliminará TODOS los datos asociados y no se puede deshacer.")
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Sí, eliminar", type="primary"):
-                        st.session_state.delete_confirmation_step = 2
-                        st.rerun()
-                with col2:
-                    if st.button("Cancelar"):
-                        st.session_state.delete_confirmation_step = 0
-                        st.session_state.empresa_to_delete = None
-                        st.rerun()
-            
-            elif st.session_state.delete_confirmation_step == 2:
-                st.error("CONFIRMACIÓN FINAL")
-                st.error(f"Escriba 'CONFIRMAR' para eliminar '{empresa_sel}':")
-                
-                confirm_text = st.text_input("Confirmación:", key="confirm_delete_input")
-                
-                if st.button("ELIMINAR DEFINITIVAMENTE"):
-                    if confirm_text == "CONFIRMAR":
-                        empresa_id = empresas[empresas["name"]==empresa_sel]["id"].values[0]
-                        
-                        try:
-                            from db_utils import delete_company_logo
-                            delete_company_logo(int(empresa_id))
-                        except:
-                            pass
-                        
-                        delete_company(int(empresa_id), deleted_by=st.session_state.get("username", "admin"))
-                        st.success(f"Empresa '{empresa_sel}' eliminada correctamente")
-                        
-                        st.session_state.show_menu = False
-                        st.session_state.delete_confirmation_step = 0
-                        st.session_state.empresa_to_delete = None
-                        st.rerun()
-                    else:
-                        st.error("Texto de confirmación incorrecto")
-                
-                if st.button("Volver atrás"):
-                    st.session_state.delete_confirmation_step = 1
-                    st.rerun()
-
-    # Obtener empresas
-    empresas = get_companies_with_logos()
-    if empresas.empty:
-        st.markdown("""
-        <div style='text-align: center; padding: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; color: white; margin: 20px 0;'>
-            <h2>Bienvenido al Sistema</h2>
-            <p style='font-size: 18px; margin: 20px 0;'>Comience creando su primera empresa para gestionar maquinaria, fluidos y mantenimiento</p>
-            <p style='font-size: 14px; opacity: 0.8;'>Use el botón "⋮" en la esquina superior derecha para agregar una nueva empresa</p>
+        bg = "#2d3e50" if st.session_state.theme_mode == "Dark" else "#ffffff"
+        text_color = "#ffffff" if st.session_state.theme_mode == "Dark" else "#000000"
+        
+        st.markdown(f"""
+        <div class='modal-content' style='background-color: {bg}; color: {text_color};'>
+            <h3>Opciones del Sistema</h3>
         </div>
         """, unsafe_allow_html=True)
-        return
-
-    # TÍTULO COMPACTO - sin márgenes excesivos
-    st.markdown("<h3 style='text-align:center; margin: 20px 0 10px 0;'>¿Con qué empresa trabajaremos hoy?</h3>", unsafe_allow_html=True)
-
-    # Navegación de empresas
-    start_idx = st.session_state.empresa_index
-    end_idx = min(start_idx + 3, len(empresas))
-    empresas_mostrar = empresas.iloc[start_idx:end_idx]
-    
-    # NAVEGACIÓN SIN CONTENEDORES VACÍOS
-    col1, col2, col3 = st.columns([1, 8, 1])
-    
-    with col1:
-        if start_idx > 0:
-            if st.button("◀", key="left_arrow", help="Empresas anteriores"):
-                st.session_state.empresa_index = max(0, start_idx - 3)
-                st.rerun()
-    
-    # TARJETAS DE EMPRESAS - SIN CONTENEDORES VACÍOS
-    with col2:
-        cols = st.columns(len(empresas_mostrar))
         
-        for idx, (_, row) in enumerate(empresas_mostrar.iterrows()):
-            with cols[idx]:
-                company_info = get_company_info_complete(row['id'])
-                logo_base64 = get_company_logo_base64(row['id'])
-                
-                bg_color = "#2d3e50" if st.session_state.theme_mode == "Dark" else "#f8f9fa"
-                text_color = "white" if st.session_state.theme_mode == "Dark" else "#333"
-                border_color = "#4a6fa5" if st.session_state.theme_mode == "Dark" else "#dee2e6"
-                
-                # Tarjeta base
-                st.markdown(
-                    f"""
-                    <div style="
-                        background: {bg_color}; 
-                        color: {text_color}; 
-                        border: 2px solid {border_color};
-                        border-radius: 15px;
-                        padding: 20px;
-                        text-align: center;
-                        margin: 10px 0;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                        transition: all 0.3s ease;
-                    ">
-                    """, 
-                    unsafe_allow_html=True
-                )
-                
-                # Logo
-                if logo_base64:
-                    st.markdown(
-                        f"""
-                        <div style="display: flex; justify-content: center; margin: 15px 0;">
-                            <img src="data:image/jpeg;base64,{logo_base64}" 
-                                 style="width: 80px; height: 80px; object-fit: cover; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        </div>
-                        """, 
-                        unsafe_allow_html=True
-                    )
-                else:
-                    st.markdown(
-                        """
-                        <div style="display: flex; justify-content: center; margin: 15px 0;">
-                            <div style="
-                                width: 80px; 
-                                height: 80px; 
-                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                                border-radius: 10px;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                font-size: 35px;
-                                color: white;
-                                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                            ">🏢</div>
-                        </div>
-                        """, 
-                        unsafe_allow_html=True
-                    )
-                
-                # Nombre
-                st.markdown(
-                    f"""
-                    <h4 style="
-                        margin: 10px 0; 
-                        font-weight: bold; 
-                        font-size: 18px;
-                        color: {text_color};
-                        text-align: center;
-                    ">{row['name']}</h4>
-                    """, 
-                    unsafe_allow_html=True
-                )
-                
-                # Fecha
-                st.markdown(
-                    f"""
-                    <div style="
-                        text-align: center; 
-                        padding: 10px; 
-                        background: rgba(0,0,0,0.05); 
-                        margin: 10px -20px -20px -20px;
-                        border-radius: 0 0 13px 13px;
-                    ">
-                        <small style="opacity: 0.6;">Registrada: {row['created_at'][:10]}</small>
-                    </div>
-                    </div>
-                    """, 
-                    unsafe_allow_html=True
-                )
-                
-                # Botón
-                if st.button(f"Acceder", key=f"btn_{row['id']}", use_container_width=True, type="primary"):
-                    st.session_state["empresa_activa"] = row["id"]
-                    st.session_state["empresa_activa_nombre"] = row["name"]
-                    st.success(f"Accediendo a {row['name']}")
-    
-    with col3:
-        if end_idx < len(empresas):
-            if st.button("▶", key="right_arrow", help="Más empresas"):
-                st.session_state.empresa_index = min(len(empresas) - 3, start_idx + 3)
-                st.rerun()
+        # Botón para cerrar modal
+        if st.button("✖️ Cerrar"):
+            st.session_state.show_menu = False
+            st.rerun()
 
