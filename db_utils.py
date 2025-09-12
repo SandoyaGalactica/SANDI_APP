@@ -28,6 +28,24 @@ import threading
 
 import numpy as np
 
+try:
+    from github_backup_utils import (
+        setup_github_auto_backup, 
+        github_manual_backup, 
+        get_github_backups, 
+        restore_from_github,
+        test_github_connection,
+        stop_auto_backup
+    )
+    GITHUB_BACKUP_AVAILABLE = True
+    print("✅ GitHub backup integration disponible")
+except ImportError as e:
+    GITHUB_BACKUP_AVAILABLE = False
+    print(f"⚠️ GitHub backup no disponible: {str(e)}")
+
+# Variable global para controlar el sistema de backup
+BACKUP_INITIALIZED = False
+
 def convert_numpy_types(obj):
     """Convierte tipos numpy a tipos Python nativos para JSON"""
     if isinstance(obj, np.int64):
@@ -6673,4 +6691,136 @@ def get_unique_company_name(base_name):
         # Fallback si hay error
         from datetime import datetime
         timestamp = datetime.now().strftime("%H%M%S")
+
         return f"{base_name} (copia {timestamp})"
+
+def initialize_backup_system():
+    """Inicializar sistema de backup con GitHub"""
+    global BACKUP_INITIALIZED
+    
+    if not GITHUB_BACKUP_AVAILABLE:
+        print("⚠️ Sistema de backup no disponible")
+        return False
+    
+    if BACKUP_INITIALIZED:
+        print("ℹ️ Sistema de backup ya inicializado")
+        return True
+    
+    try:
+        # Probar conexión con GitHub
+        success, message = test_github_connection()
+        if not success:
+            print(f"⚠️ No se pudo conectar con GitHub: {message}")
+            return False
+        
+        # Configurar auto-backup si está habilitado
+        import streamlit as st
+        backup_enabled = st.secrets.get("database", {}).get("backup_on_startup", True)
+        
+        if backup_enabled and os.path.exists(DATABASE_PATH):
+            # Hacer backup inicial al arrancar
+            initial_success, initial_message = github_manual_backup(DATABASE_PATH)
+            if initial_success:
+                print("✅ Backup inicial completado")
+            else:
+                print(f"⚠️ Backup inicial falló: {initial_message}")
+            
+            # Configurar auto-backup
+            interval = st.secrets.get("app_config", {}).get("backup_interval_minutes", 30)
+            if setup_github_auto_backup(DATABASE_PATH, interval):
+                print(f"✅ Auto-backup configurado (cada {interval} minutos)")
+            else:
+                print("⚠️ Auto-backup no pudo configurarse")
+        
+        BACKUP_INITIALIZED = True
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error inicializando sistema de backup: {str(e)}")
+        return False
+
+def manual_backup_database():
+    """Realizar backup manual de la base de datos"""
+    if not GITHUB_BACKUP_AVAILABLE:
+        return False, "Sistema de backup no disponible"
+    
+    try:
+        if not os.path.exists(DATABASE_PATH):
+            return False, "Base de datos no encontrada"
+        
+        success, message = github_manual_backup(DATABASE_PATH)
+        return success, message
+        
+    except Exception as e:
+        return False, f"Error en backup manual: {str(e)}"
+
+def restore_database_from_backup(backup_info):
+    """Restaurar base de datos desde un backup específico"""
+    if not GITHUB_BACKUP_AVAILABLE:
+        return False, "Sistema de backup no disponible"
+    
+    try:
+        success, message = restore_from_github(backup_info, DATABASE_PATH)
+        return success, message
+        
+    except Exception as e:
+        return False, f"Error restaurando backup: {str(e)}"
+
+def get_available_backups():
+    """Obtener lista de backups disponibles"""
+    if not GITHUB_BACKUP_AVAILABLE:
+        return []
+    
+    try:
+        return get_github_backups()
+    except Exception as e:
+        print(f"❌ Error obteniendo backups: {str(e)}")
+        return []
+
+def get_backup_status():
+    """Obtener estado del sistema de backup"""
+    if not GITHUB_BACKUP_AVAILABLE:
+        return {
+            "available": False,
+            "connected": False,
+            "message": "GitHub backup no disponible"
+        }
+    
+    try:
+        connected, conn_message = test_github_connection()
+        backups = get_available_backups()
+        
+        return {
+            "available": True,
+            "connected": connected,
+            "last_backup": backups[0]["name"] if backups else None,
+            "total_backups": len(backups),
+            "auto_backup_active": BACKUP_INITIALIZED,
+            "message": conn_message
+        }
+        
+    except Exception as e:
+        return {
+            "available": True,
+            "connected": False,
+            "message": f"Error verificando estado: {str(e)}"
+        }
+
+# MODIFICAR tu función existente optimize_db_connection() o crear una nueva función de inicialización:
+def setup_database_with_backup():
+    """Setup completo de la base de datos con backup"""
+    try:
+        # Tu código existente de inicialización aquí
+        # optimize_db_connection()
+        # auto_migrate()
+        # etc...
+        
+        # Después de tu inicialización normal, agregar:
+        initialize_backup_system()
+        
+        print("✅ Base de datos y sistema de backup inicializados")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error en setup: {str(e)}")
+        return False
