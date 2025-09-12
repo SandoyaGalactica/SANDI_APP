@@ -590,7 +590,7 @@ def pantalla_inicio():
             st.rerun()
     with col3:
         if st.button("⋮", help="Opciones del sistema"):
-            st.session_state.show_menu = not st.session_state.show_menu
+            if getattr(st.session_state, 'show_menu', False): = not st.session_state.show_menu
             st.rerun()
 
     # Modal flotante para opciones
@@ -838,4 +838,5 @@ def pantalla_inicio():
         if end_idx < len(empresas):
             if st.button("▶", key="right_arrow", help="Más empresas"):
                 st.session_state.empresa_index = min(len(empresas) - 3, start_idx + 3)
+
                 st.rerun()
