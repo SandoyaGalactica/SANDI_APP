@@ -7,3 +7,4 @@ scikit-learn==1.7.1
 xlsxwriter==3.2.5
 openpyxl==3.1.5
 pillow==11.1.0
+requests==2.31.0
