@@ -885,18 +885,20 @@ def mostrar_formulario_anadir_maquina(empresa_id):
             if is_valid:
                 try:
                     add_machinery_extended(
-                        empresa_id, 
-                        name.strip(), 
-                        model.strip() if model else None, 
-                        serial_number.strip() if serial_number else None,
-                        identifier.strip(),
-                        classification,
-                        consumption_per_hour,  # Ahora es por hora
-                        purchase_date.isoformat() if purchase_date else None, 
-                        status,
-                        current_hours,
-                        current_odometer
-                    )
+                        from db_utils import add_machinery_with_backup
+                        success = add_machinery_with_backup(
+                            empresa_id, 
+                            name.strip(), 
+                            model.strip() if model else None, 
+                            serial_number.strip() if serial_number else None,
+                            identifier.strip(),
+                            classification,
+                            consumption_per_hour,
+                            purchase_date.isoformat() if purchase_date else None, 
+                            status,
+                            current_hours,
+                            current_odometer
+                        )
                     st.success("Máquina añadida correctamente")
                     st.session_state.show_add_machine = False
                     st.rerun()
@@ -956,9 +958,11 @@ def mostrar_formulario_eliminar_maquina(empresa_id):
                 if confirm_text == "CONFIRMAR":
                     try:
                         result = delete_machinery(
-                            st.session_state.machinery_to_delete,
-                            deleted_by=st.session_state.get("username", "admin")
-                        )
+                            from db_utils import delete_machinery_with_backup
+                            result = delete_machinery_with_backup(
+                                st.session_state.machinery_to_delete,
+                                deleted_by=st.session_state.get("username", "admin")
+                            )
                         if result:
                             st.success(f"Máquina eliminada correctamente")
                         else:
@@ -3210,5 +3214,6 @@ def mostrar_info_respaldos():
             
     except Exception as e:
         st.error(f"Error obteniendo estadísticas: {e}")
+
 
 
