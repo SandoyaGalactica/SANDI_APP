@@ -8,18 +8,34 @@ import json
 from datetime import datetime, date, timedelta
 from io import BytesIO
 import xlsxwriter
+import time
+
 from db_utils import (
-    list_machinery, add_machinery, delete_machinery, update_machinery,
+    list_machinery, delete_machinery, 
     add_fuel_log, get_fuel_logs, get_fuel_status_advanced,
     get_machine_classifications, add_machine_classification,
     get_machinery_report, get_fuel_report, get_critical_fuel_machines,
-    get_conn, list_companies, add_company, get_unique_company_name, update_company_info_complete
+    get_conn, list_companies, get_unique_company_name, update_company_info_complete,
+    add_machinery_with_backup, delete_machinery_with_backup, 
+    update_machinery_with_backup, add_fuel_log_with_backup
 )
+
 from Maintenance_module import mostrar_mantenimiento, get_maintenance_summary
 from controles_module import mostrar_controles, init_controles_db
 from db_utils import get_critical_control_alerts
 from controles_config import mostrar_configuracion_controles
-import time
+
+try:
+    from extras_module import mostrar_extras, get_extras_summary
+    EXTRAS_MODULE_AVAILABLE = True
+except ImportError:
+    EXTRAS_MODULE_AVAILABLE = False
+
+try:
+    from statistics_ui import mostrar_estadisticas_avanzadas, configurar_pagina_estadisticas
+    STATISTICS_MODULE_AVAILABLE = True
+except ImportError:
+    STATISTICS_MODULE_AVAILABLE = False
 
 
 
@@ -29,14 +45,6 @@ try:
 except ImportError:
     EXTRAS_MODULE_AVAILABLE = False
     print("⚠️ Módulo EXTRAS no disponible")
-
-# Agregar estas líneas después de los otros imports
-try:
-    from statistics_ui import mostrar_estadisticas_avanzadas, configurar_pagina_estadisticas
-    STATISTICS_MODULE_AVAILABLE = True
-except ImportError:
-    STATISTICS_MODULE_AVAILABLE = False
-    print("⚠️ Módulo de estadísticas avanzadas no disponible")
 
 
 st.markdown("""
