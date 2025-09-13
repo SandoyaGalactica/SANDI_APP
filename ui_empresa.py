@@ -1432,25 +1432,132 @@ def mostrar_configuracion(empresa_id, empresa_nombre):
 # Reemplazar la función mostrar_config_general en ui_empresa.py
 
 def mostrar_config_general(empresa_id, empresa_nombre):
-    """Configuración general de la empresa con información completa"""
+    """Configuración general con panel de backup integrado"""
     from db_utils import (
         get_company_info_complete, update_company_info_complete, 
         save_company_logo, delete_company_logo, validate_company_info,
-        get_company_logo_base64, get_company_logo_path
+        get_company_logo_base64, get_company_logo_path,
+        get_backup_status, manual_backup_now, restore_from_cloud
     )
     
-    st.subheader("Información de la Empresa")
+    st.subheader("Configuración General")
     
-    # Obtener información actual
-    company_info = get_company_info_complete(empresa_id)
-    if not company_info:
-        company_info = {'name': empresa_nombre}
+    # PANEL DE BACKUP INTEGRADO - DESTACADO
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 20px 0;
+        color: white;
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    ">
+        <h4 style="margin: 0 0 10px 0; display: flex; align-items: center;">
+            <span style="margin-right: 10px;">☁️</span>
+            Sistema de Respaldo
+        </h4>
+        <p style="margin: 0; opacity: 0.9; font-size: 14px;">
+            Mantén tus datos seguros con respaldo automático cada 10 minutos y manual cuando lo necesites
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Solo dos pestañas: Información Básica y Logo
+    # Estado del backup
+    backup_status = get_backup_status()
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        if backup_status["connected"]:
+            st.success("🟢 Conectado")
+        else:
+            st.error("🔴 Desconectado")
+    
+    with col2:
+        st.metric("Backups", backup_status["total_backups"])
+    
+    with col3:
+        if backup_status["last_backup_time"]:
+            # Formatear tiempo desde el formato YYYYMMDD_HHMMSS
+            try:
+                from datetime import datetime
+                time_str = backup_status["last_backup_time"]
+                if "_" in time_str:
+                    date_part, time_part = time_str.split("_")
+                    formatted_time = f"{time_part[:2]}:{time_part[2:4]}"
+                    st.metric("Último", formatted_time)
+                else:
+                    st.metric("Último", "N/A")
+            except:
+                st.metric("Último", "N/A")
+        else:
+            st.metric("Último", "Nunca")
+    
+    with col4:
+        st.metric("Auto-backup", "✅ Activo")
+    
+    # Botones de backup
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("💾 Guardar Ahora", type="primary", use_container_width=True):
+            with st.spinner("Guardando en la nube..."):
+                success, message = manual_backup_now()
+                if success:
+                    st.success("✅ Guardado exitosamente")
+                    st.rerun()
+                else:
+                    st.error(f"❌ Error: {message}")
+    
+    with col2:
+        if st.button("📥 Restaurar desde Nube", type="secondary", use_container_width=True):
+            if "restore_confirm" not in st.session_state:
+                st.session_state.restore_confirm = False
+            
+            if not st.session_state.restore_confirm:
+                st.session_state.restore_confirm = True
+                st.rerun()
+    
+    with col3:
+        if backup_status["connected"]:
+            st.success("🔄 Auto: 10 min")
+        else:
+            st.error("🔄 Auto: OFF")
+    
+    # Confirmación de restauración
+    if st.session_state.get("restore_confirm", False):
+        st.warning("⚠️ **RESTAURAR DESDE LA NUBE**")
+        st.warning("Esto reemplazará todos los datos actuales con el último backup.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ Confirmar Restauración"):
+                with st.spinner("Restaurando desde la nube..."):
+                    success, message = restore_from_cloud()
+                    if success:
+                        st.success("✅ Restauración exitosa")
+                        st.info("La página se recargará automáticamente...")
+                        st.session_state.restore_confirm = False
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Error: {message}")
+        with col2:
+            if st.button("❌ Cancelar"):
+                st.session_state.restore_confirm = False
+                st.rerun()
+    
+    st.divider()
+    
+    # Información de la empresa (mantener el código existente)
     info_tabs = st.tabs(["📋 Información Básica", "🖼️ Logo y Marca"])
     
     with info_tabs[0]:
-        # INFORMACIÓN BÁSICA
+        # Tu código existente de información básica aquí...
+        company_info = get_company_info_complete(empresa_id)
+        if not company_info:
+            company_info = {'name': empresa_nombre}
+        
         with st.form(f"form_empresa_info_{empresa_id}"):
             st.markdown("#### Datos Generales")
             col1, col2 = st.columns(2)
@@ -1543,9 +1650,7 @@ def mostrar_config_general(empresa_id, empresa_nombre):
                     height=100
                 )
             
-            # Botón de guardar
             if st.form_submit_button("💾 Guardar Información", type="primary"):
-                # Preparar datos
                 datos_actualizados = {
                     'name': nombre_empresa.strip(),
                     'email': email.strip(),
@@ -1560,29 +1665,28 @@ def mostrar_config_general(empresa_id, empresa_nombre):
                     'employee_count': num_empleados
                 }
                 
-                # Validar datos
                 errores = validate_company_info(datos_actualizados)
                 
                 if errores:
                     for error in errores:
                         st.error(f"❌ {error}")
                 else:
-                    # Actualizar información
                     success, message = update_company_info_complete(empresa_id, datos_actualizados)
                     
                     if success:
                         st.success("✅ Información actualizada correctamente")
+                        # Trigger backup después de actualizar info importante
+                        from db_utils import trigger_backup_after_critical_operation
+                        trigger_backup_after_critical_operation("actualizar información empresa")
                         st.rerun()
                     else:
                         st.error(f"❌ {message}")
     
     with info_tabs[1]:
-        # GESTIÓN DE LOGO
+        # Tu código existente de logo aquí...
         st.markdown("#### Logo de la Empresa")
         
-        # Mostrar logo actual si existe
         logo_base64 = get_company_logo_base64(empresa_id)
-        logo_path = get_company_logo_path(empresa_id)
         
         col1, col2 = st.columns([1, 2])
         
@@ -1610,11 +1714,10 @@ def mostrar_config_general(empresa_id, empresa_nombre):
             uploaded_file = st.file_uploader(
                 "Seleccionar archivo de imagen",
                 type=['png', 'jpg', 'jpeg'],
-                help="Formatos soportados: PNG, JPG, JPEG. Tamaño máximo recomendado: 300x300px"
+                help="Formatos soportados: PNG, JPG, JPEG"
             )
             
             if uploaded_file is not None:
-                # Mostrar preview
                 st.markdown("**Preview:**")
                 st.image(uploaded_file, width=150)
                 
@@ -1622,48 +1725,14 @@ def mostrar_config_general(empresa_id, empresa_nombre):
                     success, result = save_company_logo(empresa_id, uploaded_file)
                     
                     if success:
-                        # Actualizar base de datos con nombre del archivo
                         update_company_info_complete(empresa_id, {'logo_filename': result})
                         st.success("✅ Logo guardado correctamente")
+                        # Trigger backup después de subir logo
+                        from db_utils import trigger_backup_after_critical_operation
+                        trigger_backup_after_critical_operation("actualizar logo empresa")
                         st.rerun()
                     else:
                         st.error(f"❌ {result}")
-            
-            # Información sobre el logo
-            with st.expander("ℹ️ Información sobre logos"):
-                st.markdown("""
-                **Recomendaciones para el logo:**
-                - Formato: PNG o JPG
-                - Tamaño: 300x300 píxeles máximo
-                - Fondo: Preferiblemente transparente (PNG) o blanco
-                - Calidad: Alta resolución para mejor visualización
-                
-                **Uso del logo:**
-                - Se mostrará en la pantalla principal de selección de empresas
-                - Aparecerá en reportes y documentos generados
-                - Se redimensionará automáticamente según sea necesario
-                """)
-    
-    st.divider()
-    
-    # Sección de acciones rápidas
-    st.markdown("#### Acciones Rápidas")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("📊 Ver Estadísticas", use_container_width=True):
-            st.session_state.current_tab = "Estadísticas"
-            st.rerun()
-    
-    with col2:
-        if st.button("📄 Ver Reportes", use_container_width=True):
-            st.session_state.current_tab = "Reportes"
-            st.rerun()
-    
-    with col3:
-        if st.button("🔧 Gestionar Máquinas", use_container_width=True):
-            st.session_state.current_tab = "Máquinas"
-            st.rerun()
 
 def mostrar_respaldo(empresa_id, empresa_nombre):
     """Pestaña de respaldo actualizada con sistema mejorado"""
@@ -3141,4 +3210,5 @@ def mostrar_info_respaldos():
             
     except Exception as e:
         st.error(f"Error obteniendo estadísticas: {e}")
+
 
