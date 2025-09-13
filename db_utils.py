@@ -6824,3 +6824,142 @@ def setup_database_with_backup():
     except Exception as e:
         print(f"❌ Error en setup: {str(e)}")
         return False
+
+# ============================================
+# SISTEMA DE BACKUP AUTOMÁTICO PARA OPERACIONES CRÍTICAS
+# ============================================
+
+def trigger_backup_after_critical_operation(operation_name="operación"):
+    """Dispara backup automático después de operaciones críticas"""
+    try:
+        from github_backup_utils import github_manual_backup
+        import os
+        
+        if os.path.exists(DB_PATH):
+            success, message = github_manual_backup(DB_PATH)
+            if success:
+                print(f"✅ Backup automático después de {operation_name}")
+            else:
+                print(f"⚠️ Backup falló después de {operation_name}: {message}")
+    except Exception as e:
+        print(f"⚠️ Error en backup automático: {e}")
+
+def add_company_with_backup(name: str):
+    """Versión con backup automático de add_company"""
+    try:
+        result = add_company(name)
+        if result:
+            trigger_backup_after_critical_operation("crear empresa")
+        return result
+    except Exception as e:
+        print(f"Error en add_company_with_backup: {e}")
+        return False
+
+def add_machinery_with_backup(*args, **kwargs):
+    """Versión con backup automático de add_machinery"""
+    try:
+        result = add_machinery_extended(*args, **kwargs)
+        if result:
+            trigger_backup_after_critical_operation("agregar máquina")
+        return result
+    except Exception as e:
+        print(f"Error en add_machinery_with_backup: {e}")
+        return False
+
+def delete_machinery_with_backup(machinery_id, deleted_by="admin"):
+    """Versión con backup automático de delete_machinery"""
+    try:
+        result = delete_machinery(machinery_id, deleted_by)
+        if result:
+            trigger_backup_after_critical_operation("eliminar máquina")
+        return result
+    except Exception as e:
+        print(f"Error en delete_machinery_with_backup: {e}")
+        return False
+
+def update_machinery_with_backup(machinery_id, **kwargs):
+    """Versión con backup automático de update_machinery"""
+    try:
+        result = update_machinery_extended(machinery_id, **kwargs)
+        if result:
+            trigger_backup_after_critical_operation("actualizar máquina")
+        return result
+    except Exception as e:
+        print(f"Error en update_machinery_with_backup: {e}")
+        return False
+
+def add_fuel_log_with_backup(*args, **kwargs):
+    """Versión con backup automático de add_fuel_log"""
+    try:
+        result = add_fuel_log(*args, **kwargs)
+        if result:
+            trigger_backup_after_critical_operation("registrar combustible")
+        return result
+    except Exception as e:
+        print(f"Error en add_fuel_log_with_backup: {e}")
+        return "Error registrando combustible"
+
+def get_backup_status():
+    """Obtiene el estado del sistema de backup"""
+    try:
+        from github_backup_utils import test_github_connection, get_github_backups
+        
+        # Probar conexión
+        connected, conn_message = test_github_connection()
+        
+        # Obtener backups disponibles
+        backups = get_github_backups() if connected else []
+        
+        return {
+            "connected": connected,
+            "message": conn_message,
+            "total_backups": len(backups),
+            "last_backup": backups[0]["name"] if backups else None,
+            "last_backup_time": backups[0]["name"].split("_")[-1].replace(".db", "") if backups else None
+        }
+    except Exception as e:
+        return {
+            "connected": False,
+            "message": f"Error: {str(e)}",
+            "total_backups": 0,
+            "last_backup": None,
+            "last_backup_time": None
+        }
+
+def manual_backup_now():
+    """Ejecuta backup manual inmediato"""
+    try:
+        from github_backup_utils import github_manual_backup
+        import os
+        
+        if not os.path.exists(DB_PATH):
+            return False, "Base de datos no encontrada"
+        
+        success, message = github_manual_backup(DB_PATH)
+        return success, message
+    except Exception as e:
+        return False, f"Error: {str(e)}"
+
+def restore_from_cloud():
+    """Restaura la base de datos desde el último backup en la nube"""
+    try:
+        from github_backup_utils import get_github_backups, restore_from_github
+        
+        backups = get_github_backups()
+        if not backups:
+            return False, "No hay backups disponibles"
+        
+        # Crear backup local antes de restaurar
+        import shutil
+        from datetime import datetime
+        
+        if os.path.exists(DB_PATH):
+            backup_local = f"{DB_PATH}.backup_local_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            shutil.copy2(DB_PATH, backup_local)
+        
+        # Restaurar desde la nube
+        success, message = restore_from_github(backups[0], DB_PATH)
+        return success, message
+        
+    except Exception as e:
+        return False, f"Error: {str(e)}"
