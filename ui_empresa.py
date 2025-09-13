@@ -893,7 +893,7 @@ def mostrar_formulario_anadir_maquina(empresa_id):
             if is_valid:
                 try:
                     add_machinery_extended(
-                        from db_utils import add_machinery_with_backup
+                    
                         success = add_machinery_with_backup(
                             empresa_id, 
                             name.strip(), 
@@ -967,7 +967,7 @@ def mostrar_formulario_eliminar_maquina(empresa_id):
                 if confirm_text == "CONFIRMAR":
                     try:
                         result = delete_machinery(
-                            from db_utils import delete_machinery_with_backup
+                            
                             result = delete_machinery_with_backup(
                                 st.session_state.machinery_to_delete,
                                 deleted_by=st.session_state.get("username", "admin")
@@ -1185,7 +1185,7 @@ def mostrar_formulario_edicion_maquina(machine):
                 }
                 if new_maintenance:
                     update_data['last_maintenance'] = new_maintenance.isoformat()
-                from db_utils import update_machinery_with_backup
+                
                 update_machinery_with_backup(machine['id'], **update_data)
                 st.success("Información actualizada correctamente")
                 st.rerun()
