@@ -4,7 +4,7 @@ from db_utils import list_companies, add_company, delete_company
 from datetime import datetime
 
 # Agregar al inicio de ui_inicio.py:
-from backup_ui import mostrar_panel_backup_simple, mostrar_estado_backup_sidebar
+#from backup_ui import mostrar_panel_backup_simple, mostrar_estado_backup_sidebar
 
 # En tu función pantalla_inicio(), agregar esto donde quieras mostrar el panel:
 
@@ -883,6 +883,7 @@ def pantalla_inicio():
         if st.sidebar.button("⚙️ Menú Opciones"):
             st.session_state.show_menu = True
             st.rerun()
+
 
 
 
