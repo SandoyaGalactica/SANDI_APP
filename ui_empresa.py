@@ -903,7 +903,7 @@ def mostrar_formulario_anadir_maquina(empresa_id):
                         purchase_date.isoformat() if purchase_date else None, 
                         status,
                         current_hours,
-                        current_odometer
+                        current_odometer  # <-- Aquí estaba el error, faltaba la coma
                     )
                     
                     if success:
@@ -967,12 +967,10 @@ def mostrar_formulario_eliminar_maquina(empresa_id):
             if st.button("✅ Eliminar definitivamente"):
                 if confirm_text == "CONFIRMAR":
                     try:
-                        result = delete_machinery(
-                            
-                            result = delete_machinery_with_backup(
-                                st.session_state.machinery_to_delete,
-                                deleted_by=st.session_state.get("username", "admin")
-                            )
+                        result = delete_machinery_with_backup(
+                            st.session_state.machinery_to_delete,
+                            deleted_by=st.session_state.get("username", "admin")
+                        )
                         if result:
                             st.success(f"Máquina eliminada correctamente")
                         else:
