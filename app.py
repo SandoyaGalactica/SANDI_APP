@@ -113,9 +113,46 @@ def login_screen():
     
     st.markdown("</div>", unsafe_allow_html=True)
 
+def initialize_backup_system():
+    """Inicializar sistema de backup para app familiar"""
+    try:
+        from github_backup_utils import setup_github_auto_backup, get_github_backups, restore_from_github, test_github_connection
+        from db_utils import DB_PATH
+        import os
+        
+        # Verificar conexión
+        success, message = test_github_connection()
+        if not success:
+            print(f"⚠️ GitHub backup no disponible: {message}")
+            return False
+        
+        # Si no existe DB local, intentar restaurar desde GitHub
+        if not os.path.exists(DB_PATH) or os.path.getsize(DB_PATH) == 0:
+            backups = get_github_backups()
+            if backups:
+                print("🔄 Restaurando último backup al iniciar...")
+                restore_success, restore_msg = restore_from_github(backups[0], DB_PATH)
+                if restore_success:
+                    print("✅ Base de datos restaurada desde GitHub")
+                else:
+                    print(f"⚠️ Error restaurando: {restore_msg}")
+        
+        # Configurar auto-backup cada 10 minutos
+        setup_github_auto_backup(DB_PATH, interval_minutes=10)
+        
+        print("✅ Sistema de backup inicializado")
+        return True
+        
+    except Exception as e:
+        print(f"⚠️ Error inicializando backup: {e}")
+        return False
+
 def main():
     # Inicializar session_state como primera acción
     initialize_session_state()
+    
+    # Inicializar sistema de backup
+    initialize_backup_system()
 
     if not st.session_state["logged_in"]:
         login_screen()
@@ -131,4 +168,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
