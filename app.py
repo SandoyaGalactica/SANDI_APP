@@ -117,7 +117,7 @@ def initialize_backup_system():
     """Inicializar sistema de backup para app familiar"""
     try:
         from github_backup_utils import setup_github_auto_backup, get_github_backups, restore_from_github, test_github_connection
-        from db_utils import DB_PATH
+        from db_utils import DB_PATH  # ← Cambiar DATABASE_PATH por DB_PATH
         import os
         
         # Verificar conexión
@@ -168,6 +168,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
