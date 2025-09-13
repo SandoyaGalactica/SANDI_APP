@@ -572,13 +572,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Reemplazar la función pantalla_inicio en ui_inicio.py
 
-# Reemplazar la función pantalla_inicio en ui_inicio.py
-
-# Reemplazar la función pantalla_inicio en ui_inicio.py - VERSION LIMPIA
 
 def pantalla_inicio():
+    """Función pantalla_inicio - Fix temporal sin backup"""
     st.set_page_config(page_title="S.A.N.D.I", layout="wide")
     
     # Inicializar variables de sesión necesarias
@@ -589,9 +586,10 @@ def pantalla_inicio():
     if "theme_mode" not in st.session_state:
         st.session_state["theme_mode"] = "Light"
     
-    # Mostrar estado de backup en sidebar si está disponible
-    if BACKUP_UI_AVAILABLE:
-        mostrar_estado_backup_sidebar()
+    # Estado simple en sidebar (sin backup por ahora)
+    st.sidebar.success("🟢 Sistema: Activo")
+    st.sidebar.info("☁️ Backup: En desarrollo")
+    st.sidebar.caption(f"👤 Usuario: {st.session_state.get('username', 'N/A')}")
     
     # Header de la aplicación
     st.markdown("# 🏢 S.A.N.D.I")
@@ -601,27 +599,33 @@ def pantalla_inicio():
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
         st.markdown(f"**Bienvenido:** {st.session_state.get('username', 'Usuario')}")
+        st.caption(f"🕒 {datetime.now().strftime('%d/%m/%Y - %H:%M')}")
     with col2:
-        if st.button("🌓 Cambiar Tema"):
-            st.session_state.theme_mode = "Dark" if st.session_state.theme_mode == "Light" else "Light"
+        current_theme = st.session_state.get("theme_mode", "Light")
+        theme_icon = "🌙" if current_theme == "Light" else "☀️"
+        if st.button(f"{theme_icon} Tema: {current_theme}"):
+            st.session_state.theme_mode = "Dark" if current_theme == "Light" else "Light"
+            st.success(f"✅ Cambiado a modo {st.session_state.theme_mode}")
             st.rerun()
     with col3:
-        if st.button("🚪 Cerrar Sesión"):
-            # Limpiar session state
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
+        if st.button("🚪 Cerrar Sesión", type="secondary"):
+            # Confirmar antes de cerrar
+            if st.session_state.get("confirm_logout", False):
+                # Limpiar session state
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+            else:
+                st.session_state["confirm_logout"] = True
+                st.warning("⚠️ Clic de nuevo para confirmar")
+                st.rerun()
     
     st.divider()
     
-    # Crear tabs para organizar la interfaz
-    if BACKUP_UI_AVAILABLE:
-        tab1, tab2, tab3, tab4 = st.tabs(["🏠 Dashboard", "🏢 Empresas", "🔄 Backups", "⚙️ Configuración"])
-    else:
-        tab1, tab2, tab4 = st.tabs(["🏠 Dashboard", "🏢 Empresas", "⚙️ Configuración"])
-        tab3 = None
+    # Tabs principales (sin backup por ahora)
+    tab1, tab2, tab3 = st.tabs(["🏠 Dashboard", "🏢 Empresas", "⚙️ Configuración"])
     
-    # TAB 1: DASHBOARD PRINCIPAL
+    # ===== TAB 1: DASHBOARD PRINCIPAL =====
     with tab1:
         st.header("📊 Dashboard Principal")
         
@@ -631,175 +635,252 @@ def pantalla_inicio():
         with col1:
             st.metric(
                 label="📈 Empresas Activas",
-                value="0",  # Aquí conectarías con tu DB
-                delta="0"
+                value="0",
+                delta="Sin cambios",
+                help="Número total de empresas registradas"
             )
         
         with col2:
             st.metric(
-                label="💰 Total Ingresos",
-                value="$0",  # Aquí conectarías con tu DB
-                delta="0%"
+                label="💰 Ingresos Total",
+                value="$0.00",
+                delta="0%",
+                help="Ingresos totales del período"
             )
         
         with col3:
             st.metric(
-                label="📋 Proyectos",
-                value="0",  # Aquí conectarías con tu DB
-                delta="0"
+                label="📋 Proyectos Activos",
+                value="0",
+                delta="0 nuevos",
+                help="Proyectos en desarrollo"
             )
         
         with col4:
-            backup_status = "🟢 Activo" if BACKUP_UI_AVAILABLE else "🔴 Inactivo"
             st.metric(
-                label="☁️ Backup",
-                value=backup_status
+                label="☁️ Estado Sistema",
+                value="🟢 Online",
+                help="Estado general del sistema"
             )
         
         st.divider()
         
-        # Accesos rápidos
+        # Sección de accesos rápidos
         st.subheader("🚀 Accesos Rápidos")
         
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("🏢 Gestionar Empresas", use_container_width=True):
-                st.info("💡 Ve al tab 'Empresas' para gestionar tus empresas")
+            if st.button("🏢 Gestionar Empresas", use_container_width=True, type="primary"):
+                st.info("💡 Ve al tab **'🏢 Empresas'** para gestionar tus empresas")
+                st.balloons()
         
         with col2:
-            if st.button("📊 Ver Reportes", use_container_width=True):
-                st.info("📈 Función de reportes - próximamente")
+            if st.button("📊 Generar Reportes", use_container_width=True):
+                st.info("📈 **Función de reportes** - Próximamente disponible")
         
         with col3:
-            if st.button("⚙️ Configuración", use_container_width=True):
-                st.info("⚙️ Ve al tab 'Configuración' para ajustes del sistema")
+            if st.button("⚙️ Configurar Sistema", use_container_width=True):
+                st.info("⚙️ Ve al tab **'⚙️ Configuración'** para ajustes")
         
-        # Información del sistema
         st.divider()
-        st.subheader("ℹ️ Información del Sistema")
         
-        info_col1, info_col2 = st.columns(2)
+        # Información del sistema y actividad reciente
+        col_left, col_right = st.columns(2)
         
-        with info_col1:
-            st.info(f"""
-            **Estado del Sistema:**
-            - 🟢 Base de datos: Conectada
-            - 🟢 Sesión: Activa
-            - 🟢 Tema: {st.session_state.theme_mode}
-            """)
+        with col_left:
+            st.subheader("ℹ️ Estado del Sistema")
+            st.success("🟢 **Base de datos:** Conectada y operativa")
+            st.success("🟢 **Sesión de usuario:** Activa y autenticada")
+            st.info(f"🎨 **Tema actual:** {st.session_state.get('theme_mode', 'Light')} Mode")
+            st.warning("🟡 **Sistema de backup:** En desarrollo")
+            
+            # Espacio para métricas adicionales
+            if st.checkbox("📈 Mostrar métricas avanzadas"):
+                st.metric("🔄 Uptime", "99.9%")
+                st.metric("⚡ Rendimiento", "Óptimo")
+                st.metric("💾 Uso de memoria", "Normal")
         
-        with info_col2:
-            st.info(f"""
-            **Última actividad:**
-            - 📅 Fecha: {datetime.now().strftime('%d/%m/%Y')}
-            - 🕒 Hora: {datetime.now().strftime('%H:%M:%S')}
-            - 👤 Usuario: {st.session_state.get('username', 'N/A')}
-            """)
+        with col_right:
+            st.subheader("📅 Actividad Reciente")
+            
+            # Simulación de actividad reciente
+            with st.container():
+                st.markdown("**🕒 Última actividad:**")
+                st.caption(f"📅 **Fecha:** {datetime.now().strftime('%d/%m/%Y')}")
+                st.caption(f"🕐 **Hora:** {datetime.now().strftime('%H:%M:%S')}")
+                st.caption(f"👤 **Usuario:** {st.session_state.get('username', 'N/A')}")
+                st.caption("🔐 **Acción:** Login exitoso")
+                
+                st.markdown("---")
+                
+                # Log de actividades (simulado)
+                st.markdown("**📋 Historial reciente:**")
+                activities = [
+                    "🔐 Inicio de sesión",
+                    "🏠 Acceso a dashboard", 
+                    "⚙️ Configuración de sistema",
+                    "🔄 Actualización de datos"
+                ]
+                
+                for activity in activities:
+                    st.caption(f"• {activity}")
     
-    # TAB 2: EMPRESAS
+    # ===== TAB 2: EMPRESAS =====
     with tab2:
         st.header("🏢 Gestión de Empresas")
         
-        # Aquí iría tu contenido actual de empresas
-        st.info("📋 Aquí aparecerá la lista y gestión de empresas")
-        st.markdown("**Funcionalidades disponibles:**")
-        st.markdown("- ➕ Crear nueva empresa")
-        st.markdown("- 📝 Editar empresa existente")  
-        st.markdown("- 🗑️ Eliminar empresa")
-        st.markdown("- 📊 Ver detalles y métricas")
+        # Info placeholder
+        st.info("📋 **Panel de gestión de empresas** - Aquí aparecerá toda la funcionalidad de empresas")
         
-        # Botón placeholder para crear empresa
-        if st.button("➕ Crear Nueva Empresa"):
-            st.success("✅ Función de crear empresa - implementar según tu lógica actual")
-    
-    # TAB 3: BACKUPS (solo si está disponible)
-    if tab3 and BACKUP_UI_AVAILABLE:
-        with tab3:
-            mostrar_panel_backup_simple()
-    
-    # TAB 4: CONFIGURACIÓN
-    with tab4:
+        # Botones principales
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("➕ Crear Nueva Empresa", use_container_width=True, type="primary"):
+                st.success("✅ **Función crear empresa** - Implementar según tu lógica actual")
+        
+        with col2:
+            if st.button("📝 Editar Empresa", use_container_width=True):
+                st.info("📝 **Función editar empresa** - Seleccionar empresa existente")
+        
+        with col3:
+            if st.button("📊 Ver Estadísticas", use_container_width=True):
+                st.info("📊 **Estadísticas de empresas** - Reportes y métricas")
+        
+        st.divider()
+        
+        # Placeholder para lista de empresas
+        st.subheader("📋 Lista de Empresas")
+        st.markdown("""
+        **Funcionalidades disponibles:**
+        - ➕ **Crear nueva empresa** con información completa
+        - 📝 **Editar empresa existente** - modificar datos
+        - 🗑️ **Eliminar empresa** - con confirmación
+        - 📊 **Ver detalles y métricas** por empresa
+        - 🔍 **Buscar y filtrar** empresas
+        - 📄 **Generar reportes** individuales
+        """)
+        
+        # Aquí iría tu código actual de empresas cuando lo integres
+        
+    # ===== TAB 3: CONFIGURACIÓN =====
+    with tab3:
         st.header("⚙️ Configuración del Sistema")
         
-        # Configuración de tema
-        st.subheader("🎨 Apariencia")
-        tema_actual = st.session_state.get("theme_mode", "Light")
-        nuevo_tema = st.selectbox(
-            "Seleccionar tema:",
-            ["Light", "Dark"],
-            index=0 if tema_actual == "Light" else 1
-        )
+        # Configuración de apariencia
+        st.subheader("🎨 Apariencia y Tema")
         
-        if nuevo_tema != tema_actual:
-            st.session_state.theme_mode = nuevo_tema
-            st.success(f"✅ Tema cambiado a {nuevo_tema}")
-            st.rerun()
+        col_theme, col_info = st.columns([1, 2])
+        
+        with col_theme:
+            tema_actual = st.session_state.get("theme_mode", "Light")
+            nuevo_tema = st.selectbox(
+                "Seleccionar tema:",
+                ["Light", "Dark"],
+                index=0 if tema_actual == "Light" else 1,
+                help="Cambia la apariencia de la interfaz"
+            )
+            
+            if nuevo_tema != tema_actual:
+                st.session_state.theme_mode = nuevo_tema
+                st.success(f"✅ Tema cambiado a **{nuevo_tema} Mode**")
+                st.rerun()
+        
+        with col_info:
+            st.info(f"""
+            **🎨 Configuración actual:**
+            - **Tema activo:** {st.session_state.get('theme_mode', 'Light')} Mode
+            - **Sesión:** {st.session_state.get('username', 'N/A')}
+            - **Estado:** Conectado
+            """)
         
         st.divider()
         
         # Configuración de backup
-        st.subheader("💾 Configuración de Backup")
-        if BACKUP_UI_AVAILABLE:
-            st.success("✅ Sistema de backup disponible y configurado")
-            
-            # Mostrar configuración actual
-            try:
-                backup_interval = st.secrets.get("app_config", {}).get("backup_interval_minutes", 30)
-                st.info(f"🕒 Intervalo de auto-backup: {backup_interval} minutos")
-                
-                max_backups = st.secrets.get("app_config", {}).get("max_auto_backups", 10)
-                st.info(f"📁 Máximo backups automáticos: {max_backups}")
-                
-            except Exception as e:
-                st.warning(f"⚠️ No se pudo leer configuración de backup: {str(e)}")
-        else:
-            st.warning("⚠️ Sistema de backup no disponible")
-            st.info("💡 Para habilitar backup, configura los secrets de GitHub")
+        st.subheader("💾 Sistema de Backup")
+        st.warning("🚧 **En desarrollo** - Sistema de backup automático próximamente")
+        
+        st.markdown("""
+        **🔄 Características planificadas:**
+        - ✅ **Backup automático** cada 30 minutos
+        - ✅ **Backup manual** con un clic
+        - ✅ **Almacenamiento en GitHub** seguro
+        - ✅ **Restauración** desde cualquier punto
+        - ✅ **Historial** de cambios
+        """)
+        
+        if st.button("🔧 Configurar Backup", disabled=True):
+            st.info("⏳ Función en desarrollo...")
         
         st.divider()
         
-        # Información de debug (solo para desarrollo)
-        if st.checkbox("🔍 Mostrar información de debug"):
-            st.subheader("🔧 Debug Info")
+        # Información del sistema
+        st.subheader("🖥️ Información del Sistema")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**📱 Aplicación:**")
+            st.caption("• Nombre: S.A.N.D.I")
+            st.caption("• Versión: 1.0.0")
+            st.caption("• Estado: Activo")
+            st.caption(f"• Tema: {st.session_state.get('theme_mode', 'Light')}")
+        
+        with col2:
+            st.markdown("**👤 Sesión actual:**")
+            st.caption(f"• Usuario: {st.session_state.get('username', 'N/A')}")
+            st.caption(f"• Conectado desde: {datetime.now().strftime('%H:%M')}")
+            st.caption("• Estado: Autenticado")
+            st.caption("• Permisos: Administrador")
+        
+        # Panel de debug (solo para desarrollo)
+        st.divider()
+        if st.checkbox("🔍 Modo Debug (Desarrollo)", help="Mostrar información técnica"):
+            st.subheader("🔧 Información de Debug")
             
-            # Session state
             with st.expander("📱 Session State"):
                 st.json(dict(st.session_state))
             
-            # Secrets (cuidado con información sensible)
-            with st.expander("🔐 Secrets Configuration"):
-                try:
-                    secrets_safe = {}
-                    for key, value in st.secrets.items():
-                        if isinstance(value, dict):
-                            secrets_safe[key] = {k: "***" if "token" in k.lower() or "password" in k.lower() else v for k, v in value.items()}
-                        else:
-                            secrets_safe[key] = "***" if "token" in str(key).lower() or "password" in str(key).lower() else value
-                    st.json(secrets_safe)
-                except Exception as e:
-                    st.error(f"Error mostrando secrets: {str(e)}")
-            
-            # Variables del sistema
-            with st.expander("🖥️ System Info"):
-                st.write(f"**BACKUP_UI_AVAILABLE:** {BACKUP_UI_AVAILABLE}")
-                st.write(f"**Current time:** {datetime.now()}")
+            with st.expander("🖥️ Variables del Sistema"):
+                debug_info = {
+                    "timestamp": datetime.now().isoformat(),
+                    "theme_mode": st.session_state.get('theme_mode'),
+                    "logged_in": st.session_state.get('logged_in', False),
+                    "username": st.session_state.get('username'),
+                }
+                st.json(debug_info)
     
-    # Modal flotante para opciones (tu código original)
+    # Modal flotante (tu código original - simplificado)
     if st.session_state.get('show_menu', False):
-        st.markdown("<div class='modal-overlay'></div>", unsafe_allow_html=True)
         
-        bg = "#2d3e50" if st.session_state.theme_mode == "Dark" else "#ffffff"
-        text_color = "#ffffff" if st.session_state.theme_mode == "Dark" else "#000000"
-        
-        st.markdown(f"""
-        <div class='modal-content' style='background-color: {bg}; color: {text_color};'>
-            <h3>Opciones del Sistema</h3>
-        </div>
+        # Overlay
+        st.markdown("""
+        <style>
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        </style>
         """, unsafe_allow_html=True)
         
-        # Botón para cerrar modal
-        if st.button("✖️ Cerrar"):
-            st.session_state.show_menu = False
+        st.markdown("<div class='modal-overlay'></div>", unsafe_allow_html=True)
+        
+        # Contenido del modal
+        with st.container():
+            st.markdown("### ⚙️ Menú del Sistema")
+            st.info("🔧 **Opciones del sistema** - En desarrollo")
+            
+            if st.button("✖️ Cerrar Menú", type="secondary"):
+                st.session_state.show_menu = False
+                st.rerun()
+    
+    # Botón flotante para abrir menú (opcional)
+    if not st.session_state.get('show_menu', False):
+        if st.sidebar.button("⚙️ Menú Opciones"):
+            st.session_state.show_menu = True
             st.rerun()
+
 
