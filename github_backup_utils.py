@@ -91,7 +91,7 @@ class GitHubBackupManager:
                 readme_data = {
                     "message": "Crear carpeta de backups",
                     "content": readme_content,
-                    "branch": "main"
+                    "branch": "deploy"
                 }
                 
                 readme_url = f"{url}/README.md"
@@ -144,7 +144,7 @@ class GitHubBackupManager:
             data = {
                 "message": commit_message,
                 "content": content,
-                "branch": "main"
+                "branch": "deploy"
             }
             
             # Crear archivo
@@ -259,7 +259,7 @@ class GitHubBackupManager:
             data = {
                 "message": f"Cleanup: Eliminar backup antiguo {backup_info['name']}",
                 "sha": backup_info["sha"],
-                "branch": "main"
+                "branch": "deploy"
             }
             
             response = requests.delete(url, json=data, headers=headers)
