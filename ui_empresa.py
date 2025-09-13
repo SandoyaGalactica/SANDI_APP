@@ -892,25 +892,26 @@ def mostrar_formulario_anadir_maquina(empresa_id):
         if st.form_submit_button("Añadir Máquina"):
             if is_valid:
                 try:
-                    add_machinery_extended(
+                    success = add_machinery_with_backup(
+                        empresa_id, 
+                        name.strip(), 
+                        model.strip() if model else None, 
+                        serial_number.strip() if serial_number else None,
+                        identifier.strip(),
+                        classification,
+                        consumption_per_hour,
+                        purchase_date.isoformat() if purchase_date else None, 
+                        status,
+                        current_hours,
+                        current_odometer
+                    )
                     
-                        success = add_machinery_with_backup(
-                            empresa_id, 
-                            name.strip(), 
-                            model.strip() if model else None, 
-                            serial_number.strip() if serial_number else None,
-                            identifier.strip(),
-                            classification,
-                            consumption_per_hour,
-                            purchase_date.isoformat() if purchase_date else None, 
-                            status,
-                            current_hours,
-                            current_odometer
-                        )
-
-                    st.success("Máquina añadida correctamente")
-                    st.session_state.show_add_machine = False
-                    st.rerun()
+                    if success:
+                        st.success("Máquina añadida correctamente")
+                        st.session_state.show_add_machine = False
+                        st.rerun()
+                    else:
+                        st.error("Error al añadir la máquina")
                 except Exception as e:
                     st.error(f"Error al añadir la máquina: {str(e)}")
             else:
