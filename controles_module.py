@@ -409,7 +409,7 @@ def mostrar_dashboard_fluidos(empresa_id, unit_preference):
         )
 
 def mostrar_gestion_tanques(empresa_id, unit_preference):
-    """Gestión simplificada de tanques con enfoque de inventario"""
+    """Gestión simplificada de tanques con enfoque de inventario - CORREGIDA"""
     st.subheader("Gestión de Tanques")
     
     tanques = get_company_tanks(empresa_id)
@@ -451,58 +451,75 @@ def mostrar_gestion_tanques(empresa_id, unit_preference):
     
     st.divider()
     
-    # Formulario de reabastecimiento (ENTRADA)
-    st.subheader("➕ Reabastecimiento (Entrada de Inventario)")
+    # Verificar si el tanque está lleno
+    available_capacity = selected_tank['tank_capacity'] - selected_tank['current_level']
     
-    entrada_form_key = f"entrada_inventario_{selected_tank['id']}" if selected_tank is not None and 'id' in selected_tank else "entrada_inventario"
-    with st.form(entrada_form_key, clear_on_submit=True):
-        col1, col2 = st.columns(2)
+    if available_capacity <= 0:
+        st.warning("⚠️ El tanque está lleno. No se puede agregar más inventario.")
+        st.info("💡 Para agregar inventario, considere aumentar la capacidad del tanque o consumir parte del inventario actual.")
+    else:
+        # Formulario de reabastecimiento (ENTRADA) - SOLO si hay capacidad
+        st.subheader("➕ Reabastecimiento (Entrada de Inventario)")
         
-        with col1:
-            cantidad_entrada = st.number_input(
-                f"Cantidad a agregar ({unit_preference})",
-                min_value=0.1,
-                max_value=float(selected_tank['tank_capacity'] - selected_tank['current_level']),
-                step=0.1,
-                format="%.2f"
-            )
+        entrada_form_key = f"entrada_inventario_{selected_tank['id']}" if selected_tank is not None and 'id' in selected_tank else "entrada_inventario"
+        with st.form(entrada_form_key, clear_on_submit=True):
+            col1, col2 = st.columns(2)
             
-            costo_unitario = st.number_input(
-                f"Costo por {unit_preference} ($)",
-                min_value=0.0,
-                step=0.01,
-                format="%.2f"
-            )
-        
-        with col2:
-            proveedor = st.text_input("Proveedor")
-            numero_factura = st.text_input("Número de Factura/Referencia")
-        
-        notas = st.text_area("Notas adicionales")
-        
-        if st.form_submit_button("Registrar Entrada"):
-            if cantidad_entrada > 0:
-                success, message = procesar_entrada_inventario(
-                    selected_tank['id'],
-                    cantidad_entrada,
-                    costo_unitario,
-                    proveedor,
-                    numero_factura,
-                    notas,
-                    st.session_state.get("username", "admin")
+            with col1:
+                # Asegurar que max_value sea siempre mayor que min_value
+                max_capacity = max(0.1, float(available_capacity))
+                
+                cantidad_entrada = st.number_input(
+                    f"Cantidad a agregar ({unit_preference})",
+                    min_value=0.1,
+                    max_value=max_capacity,
+                    step=0.1,
+                    format="%.2f",
+                    help=f"Capacidad disponible: {available_capacity:.1f} {unit_preference}"
                 )
                 
-                if success:
-                    st.success(message)
-                    st.rerun()
+                costo_unitario = st.number_input(
+                    f"Costo por {unit_preference} ($)",
+                    min_value=0.0,
+                    step=0.01,
+                    format="%.2f"
+                )
+            
+            with col2:
+                proveedor = st.text_input("Proveedor")
+                numero_factura = st.text_input("Número de Factura/Referencia")
+            
+            notas = st.text_area("Notas adicionales")
+            
+            # Validación adicional en el botón
+            entrada_valida = cantidad_entrada > 0 and cantidad_entrada <= available_capacity
+            
+            if st.form_submit_button("Registrar Entrada", disabled=not entrada_valida):
+                if entrada_valida:
+                    success, message = procesar_entrada_inventario(
+                        selected_tank['id'],
+                        cantidad_entrada,
+                        costo_unitario,
+                        proveedor,
+                        numero_factura,
+                        notas,
+                        st.session_state.get("username", "admin")
+                    )
+                    
+                    if success:
+                        st.success(message)
+                        st.rerun()
+                    else:
+                        st.error(message)
                 else:
-                    st.error(message)
-            else:
-                st.error("La cantidad debe ser mayor a 0")
+                    if cantidad_entrada > available_capacity:
+                        st.error(f"La cantidad ({cantidad_entrada:.1f}) excede la capacidad disponible ({available_capacity:.1f})")
+                    else:
+                        st.error("La cantidad debe ser mayor a 0")
     
     st.divider()
     
-    # Historial de movimientos del tanque
+    # Historial de movimientos del tanque (siempre mostrar)
     st.subheader("📋 Historial de Movimientos")
     mostrar_historial_tanque(selected_tank['id'])
 
@@ -2802,4 +2819,5 @@ def mostrar_configuracion_alertas_tanque(tank_id, empresa_id):
                 st.metric("Bajo Predeterminado", f"{default_low}%")
                 
     except Exception as e:
+
         st.error(f"Error mostrando configuración: {str(e)}")
