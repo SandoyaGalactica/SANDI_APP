@@ -8,14 +8,7 @@ import numpy as np
 
 # GitHub backup imports
 try:
-    from github_backup_utils import (
-        setup_github_auto_backup, 
-        github_manual_backup, 
-        get_github_backups, 
-        restore_from_github,
-        test_github_connection,
-        stop_auto_backup
-    )
+    from github_backup_utils import setup_github_auto_backup, github_manual_backup, get_github_backups, restore_from_github, test_github_connection, stop_auto_backup
     GITHUB_BACKUP_AVAILABLE = True
     print("✅ GitHub backup integration disponible")
 except ImportError as e:
@@ -7025,4 +7018,5 @@ def cleanup_github_backups():
         return True, f"Se eliminaron {deleted_count} backups antiguos"
     except Exception as e:
         return False, f"Error en limpieza: {str(e)}"
+
 
