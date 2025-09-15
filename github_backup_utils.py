@@ -11,13 +11,18 @@ import atexit
 
 class GitHubBackupManager:
     def __init__(self):
-        """Inicializar con tokens desde Streamlit secrets"""
-        self.repo_owner = None
-        self.repo_name = None
-        self.access_token = None
-        self.api_base = "https://api.github.com"
-        self.backup_active = True
-        self._initialize_from_secrets()
+    """Inicializar con tokens desde Streamlit secrets - MODIFICADO"""
+    self.repo_owner = None
+    self.repo_name = None
+    self.access_token = None
+    self.api_base = "https://api.github.com"
+    self.backup_active = True
+    
+    # NUEVO: Límites de retención configurables
+    self.keep_auto_backups = 10
+    self.keep_manual_backups = 5
+    
+    self._initialize_from_secrets()
     
     def _initialize_from_secrets(self):
         """Inicializar configuración desde secrets"""
@@ -221,31 +226,44 @@ class GitHubBackupManager:
         except Exception as e:
             return False, f"Error en descarga: {str(e)}"
     
-    def cleanup_old_backups(self, keep_auto=10, keep_manual=5):
-        """Limpiar backups antiguos, manteniendo solo los más recientes"""
-        try:
-            backups = self.list_backups()
-            
-            # Separar backups automáticos y manuales
-            auto_backups = [b for b in backups if "auto" in b["name"]]
-            manual_backups = [b for b in backups if "manual" in b["name"]]
-            
-            # Eliminar backups automáticos antiguos
-            if len(auto_backups) > keep_auto:
-                to_delete_auto = auto_backups[keep_auto:]
-                for backup in to_delete_auto:
-                    self._delete_backup(backup)
+    def cleanup_old_backups(self, keep_auto=None, keep_manual=None):
+    """Limpiar backups antiguos - MODIFICADO para usar límites configurables"""
+    try:
+        # Usar límites configurables si no se especifican
+        if keep_auto is None:
+            keep_auto = getattr(self, 'keep_auto_backups', 10)
+        if keep_manual is None:
+            keep_manual = getattr(self, 'keep_manual_backups', 5)
+        
+        backups = self.list_backups()
+        
+        # Separar backups automáticos y manuales
+        auto_backups = [b for b in backups if "auto" in b["name"]]
+        manual_backups = [b for b in backups if "manual" in b["name"]]
+        
+        deleted_count = 0
+        
+        # Eliminar backups automáticos antiguos
+        if len(auto_backups) > keep_auto:
+            to_delete_auto = auto_backups[keep_auto:]
+            for backup in to_delete_auto:
+                if self._delete_backup(backup):
                     print(f"🗑️ Backup automático eliminado: {backup['name']}")
-            
-            # Eliminar backups manuales antiguos
-            if len(manual_backups) > keep_manual:
-                to_delete_manual = manual_backups[keep_manual:]
-                for backup in to_delete_manual:
-                    self._delete_backup(backup)
+                    deleted_count += 1
+        
+        # Eliminar backups manuales antiguos
+        if len(manual_backups) > keep_manual:
+            to_delete_manual = manual_backups[keep_manual:]
+            for backup in to_delete_manual:
+                if self._delete_backup(backup):
                     print(f"🗑️ Backup manual eliminado: {backup['name']}")
-                    
-        except Exception as e:
-            print(f"❌ Error limpiando backups antiguos: {str(e)}")
+                    deleted_count += 1
+        
+        return deleted_count
+        
+    except Exception as e:
+        print(f"❌ Error limpiando backups antiguos: {str(e)}")
+        return 0
     
     def _delete_backup(self, backup_info):
         """Eliminar un backup específico"""
@@ -365,3 +383,117 @@ def test_github_connection():
 def get_github_manager():
     """Obtener instancia del manager"""
     return github_backup_manager
+
+
+def get_backups_with_details(self):
+    """Obtener lista detallada de backups con información formateada"""
+    if not self.is_configured():
+        return []
+    
+    try:
+        backups = self.list_backups()
+        detailed_backups = []
+        
+        for backup in backups:
+            # Parsear información del nombre del archivo
+            filename = backup["name"]
+            file_info = self._parse_backup_filename(filename)
+            
+            detailed_backups.append({
+                "name": filename,
+                "display_name": file_info["display_name"],
+                "type": file_info["type"],
+                "date": file_info["date"],
+                "time": file_info["time"],
+                "timestamp": file_info["timestamp"],
+                "size": backup.get("size", 0),
+                "download_url": backup.get("download_url"),
+                "sha": backup.get("sha"),
+                "path": backup.get("path"),
+                "raw_info": backup
+            })
+        
+        # Ordenar por timestamp (más reciente primero)
+        detailed_backups.sort(key=lambda x: x["timestamp"], reverse=True)
+        return detailed_backups
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo detalles de backups: {str(e)}")
+        return []
+
+def _parse_backup_filename(self, filename):
+    """Parsear nombre de archivo de backup para extraer información"""
+    try:
+        # Formato esperado: sandi_auto_20241215_143022.db o sandi_manual_20241215_143022.db
+        parts = filename.replace(".db", "").split("_")
+        
+        if len(parts) >= 4:
+            backup_type = parts[1]  # auto o manual
+            date_part = parts[2]    # 20241215
+            time_part = parts[3]    # 143022
+            
+            # Formatear fecha legible
+            year = date_part[:4]
+            month = date_part[4:6]
+            day = date_part[6:8]
+            
+            hour = time_part[:2]
+            minute = time_part[2:4]
+            second = time_part[4:6]
+            
+            formatted_date = f"{day}/{month}/{year}"
+            formatted_time = f"{hour}:{minute}:{second}"
+            
+            type_icon = "🤖" if backup_type == "auto" else "👤"
+            type_text = "Automático" if backup_type == "auto" else "Manual"
+            
+            display_name = f"{type_icon} {type_text} - {formatted_date} {formatted_time}"
+            
+            return {
+                "display_name": display_name,
+                "type": backup_type,
+                "date": formatted_date,
+                "time": formatted_time,
+                "timestamp": f"{date_part}_{time_part}"
+            }
+        else:
+            # Formato no reconocido
+            return {
+                "display_name": filename,
+                "type": "unknown",
+                "date": "N/A",
+                "time": "N/A",
+                "timestamp": "00000000_000000"
+            }
+            
+    except Exception as e:
+        return {
+            "display_name": filename,
+            "type": "error",
+            "date": "N/A", 
+            "time": "N/A",
+            "timestamp": "00000000_000000"
+        }
+
+def update_retention_limits(self, keep_auto=None, keep_manual=None):
+    """Actualizar límites de retención de backups"""
+    try:
+        if keep_auto is not None:
+            self.keep_auto_backups = max(1, min(keep_auto, 50))  # Entre 1 y 50
+        
+        if keep_manual is not None:
+            self.keep_manual_backups = max(1, min(keep_manual, 20))  # Entre 1 y 20
+        
+        print(f"✅ Límites actualizados: Auto={self.keep_auto_backups}, Manual={self.keep_manual_backups}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error actualizando límites: {str(e)}")
+        return False
+
+def get_retention_limits(self):
+    """Obtener límites actuales de retención"""
+    return {
+        "auto": getattr(self, 'keep_auto_backups', 10),
+        "manual": getattr(self, 'keep_manual_backups', 5)
+    }
