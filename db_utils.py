@@ -1,33 +1,12 @@
-def safe_execute_with_retry(operation, max_retries=3, base_delay=0.1):
-    """
-    Ejecuta una operación de base de datos con reintentos y manejo de bloqueos
-    """
-    last_error = None
-    for attempt in range(max_retries):
-        try:
-            with _connection_lock:
-                return operation()
-        except sqlite3.OperationalError as e:
-            last_error = e
-            if "database is locked" in str(e) and attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt)  # Backoff exponencial
-                print(f"Database locked, reintentando en {delay}s (intento {attempt + 1}/{max_retries})")
-                time.sleep(delay)
-                continue
-            else:
-                raise e
-        except Exception as e:
-            raise e
-    raise last_error
 import sqlite3
 import pandas as pd
 from datetime import datetime, timedelta
 import streamlit as st
 import time
 import threading
-
 import numpy as np
 
+# GitHub backup imports
 try:
     from github_backup_utils import (
         setup_github_auto_backup, 
@@ -43,8 +22,31 @@ except ImportError as e:
     GITHUB_BACKUP_AVAILABLE = False
     print(f"⚠️ GitHub backup no disponible: {str(e)}")
 
-# Variable global para controlar el sistema de backup
+# Variables globales
 BACKUP_INITIALIZED = False
+connection_lock = threading.Lock()
+
+def safe_execute_with_retry(operation, max_retries=3, base_delay=0.1):
+    """
+    Ejecuta una operación de base de datos con reintentos y manejo de bloqueos
+    """
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            with connection_lock:
+                return operation()
+        except sqlite3.OperationalError as e:
+            last_error = e
+            if "database is locked" in str(e) and attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)
+                print(f"Database locked, reintentando en {delay}s (intento {attempt + 1}/{max_retries})")
+                time.sleep(delay)
+                continue
+            else:
+                raise e
+        except Exception as e:
+            raise e
+    raise last_error
 
 def convert_numpy_types(obj):
     """Convierte tipos numpy a tipos Python nativos para JSON"""
@@ -7023,3 +7025,4 @@ def cleanup_github_backups():
         return True, f"Se eliminaron {deleted_count} backups antiguos"
     except Exception as e:
         return False, f"Error en limpieza: {str(e)}"
+
