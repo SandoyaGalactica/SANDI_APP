@@ -19,7 +19,7 @@ class GitHubBackupManager:
         self.backup_active = True
         self._initialize_from_secrets()
     
-    def _initialize_from_secrets(self):
+def _initialize_from_secrets(self):
         """Inicializar configuración desde secrets"""
         try:
             # Intentar obtener configuración desde secrets
@@ -38,11 +38,11 @@ class GitHubBackupManager:
             print(f"⚠️ Error configurando GitHub backup: {str(e)}")
             return False
     
-    def is_configured(self):
+def is_configured(self):
         """Verificar si está configurado correctamente"""
         return all([self.repo_owner, self.repo_name, self.access_token])
     
-    def test_connection(self):
+def test_connection(self):
         """Probar conexión con GitHub"""
         if not self.is_configured():
             return False, "Configuración incompleta"
@@ -70,7 +70,7 @@ class GitHubBackupManager:
         except Exception as e:
             return False, f"Error de conexión: {str(e)}"
     
-    def ensure_backup_folder(self):
+def ensure_backup_folder(self):
         """Asegurar que existe la carpeta de backups en el repositorio"""
         try:
             folder_path = "database_backups"
@@ -110,7 +110,7 @@ class GitHubBackupManager:
             print(f"❌ Error verificando carpeta de backups: {str(e)}")
             return False
     
-    def upload_database(self, db_path, custom_message=None, is_auto=False):
+def upload_database(self, db_path, custom_message=None, is_auto=False):
         """Subir base de datos como backup a GitHub"""
         if not self.is_configured():
             return False, "GitHub backup no configurado"
@@ -164,7 +164,7 @@ class GitHubBackupManager:
         except Exception as e:
             return False, f"Error subiendo backup: {str(e)}"
     
-    def list_backups(self):
+def list_backups(self):
         """Listar backups disponibles en GitHub"""
         if not self.is_configured():
             return []
@@ -192,7 +192,7 @@ class GitHubBackupManager:
             print(f"❌ Error listando backups: {str(e)}")
             return []
     
-    def download_backup(self, backup_info, local_path):
+def download_backup(self, backup_info, local_path):
         """Descargar backup desde GitHub"""
         try:
             # Crear backup de la base actual
@@ -221,16 +221,34 @@ class GitHubBackupManager:
         except Exception as e:
             return False, f"Error en descarga: {str(e)}"
     
-    def cleanup_old_backups(self, keep_auto=10, keep_manual=5):
+
+def cleanup_old_backups(self, keep_auto=10, keep_manual=5):
     """Limpiar backups antiguos, manteniendo solo los más recientes"""
     try:
-        # Obtener los valores de los secrets de Streamlit si están disponibles
-        keep_auto_secret = st.secrets.get("github_backup", {}).get("keep_auto")
-        keep_manual_secret = st.secrets.get("github_backup", {}).get("keep_manual")
+        # Intentar obtener valores de secrets solo si streamlit está disponible
+        keep_auto_val = keep_auto
+        keep_manual_val = keep_manual
         
-        # Usar los valores de los secrets si existen, de lo contrario usar los valores predeterminados
-        keep_auto_val = int(keep_auto_secret) if keep_auto_secret is not None else keep_auto
-        keep_manual_val = int(keep_manual_secret) if keep_manual_secret is not None else keep_manual
+        try:
+            import streamlit as st
+            keep_auto_secret = st.secrets.get("github_backup", {}).get("keep_auto")
+            keep_manual_secret = st.secrets.get("github_backup", {}).get("keep_manual")
+            
+            # Usar los valores de los secrets si existen
+            if keep_auto_secret is not None:
+                try:
+                    keep_auto_val = int(keep_auto_secret)
+                except (ValueError, TypeError):
+                    pass  # Si no se puede convertir a int, usar el valor por defecto
+                    
+            if keep_manual_secret is not None:
+                try:
+                    keep_manual_val = int(keep_manual_secret)
+                except (ValueError, TypeError):
+                    pass  # Si no se puede convertir a int, usar el valor por defecto
+        except ImportError:
+            # Streamlit no está disponible, usar valores por defecto
+            pass
         
         backups = self.list_backups()
         
@@ -255,7 +273,7 @@ class GitHubBackupManager:
     except Exception as e:
         print(f"❌ Error limpiando backups antiguos: {str(e)}")
     
-    def _delete_backup(self, backup_info):
+def _delete_backup(self, backup_info):
         """Eliminar un backup específico"""
         try:
             url = f"{self.api_base}/repos/{self.repo_owner}/{self.repo_name}/contents/{backup_info['path']}"
