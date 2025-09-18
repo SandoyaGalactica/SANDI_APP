@@ -222,33 +222,8 @@ class GitHubBackupManager:
             return False, f"Error en descarga: {str(e)}"
     
     def cleanup_old_backups(self, keep_auto=10, keep_manual=5):
-    """Limpiar backups antiguos, manteniendo solo los más recientes"""
+        """Limpiar backups antiguos, manteniendo solo los más recientes"""
         try:
-            # Intentar obtener valores de secrets solo si streamlit está disponible
-            keep_auto_val = keep_auto
-            keep_manual_val = keep_manual
-            
-            try:
-                import streamlit as st
-                keep_auto_secret = st.secrets.get("github_backup", {}).get("keep_auto")
-                keep_manual_secret = st.secrets.get("github_backup", {}).get("keep_manual")
-                
-                # Usar los valores de los secrets si existen
-                if keep_auto_secret is not None:
-                    try:
-                        keep_auto_val = int(keep_auto_secret)
-                    except (ValueError, TypeError):
-                        pass  # Si no se puede convertir a int, usar el valor por defecto
-                        
-                if keep_manual_secret is not None:
-                    try:
-                        keep_manual_val = int(keep_manual_secret)
-                    except (ValueError, TypeError):
-                        pass  # Si no se puede convertir a int, usar el valor por defecto
-            except ImportError:
-                # Streamlit no está disponible, usar valores por defecto
-                pass
-            
             backups = self.list_backups()
             
             # Separar backups automáticos y manuales
@@ -256,15 +231,15 @@ class GitHubBackupManager:
             manual_backups = [b for b in backups if "manual" in b["name"]]
             
             # Eliminar backups automáticos antiguos
-            if len(auto_backups) > keep_auto_val:
-                to_delete_auto = auto_backups[keep_auto_val:]
+            if len(auto_backups) > keep_auto:
+                to_delete_auto = auto_backups[keep_auto:]
                 for backup in to_delete_auto:
                     self._delete_backup(backup)
                     print(f"🗑️ Backup automático eliminado: {backup['name']}")
             
             # Eliminar backups manuales antiguos
-            if len(manual_backups) > keep_manual_val:
-                to_delete_manual = manual_backups[keep_manual_val:]
+            if len(manual_backups) > keep_manual:
+                to_delete_manual = manual_backups[keep_manual:]
                 for backup in to_delete_manual:
                     self._delete_backup(backup)
                     print(f"🗑️ Backup manual eliminado: {backup['name']}")
