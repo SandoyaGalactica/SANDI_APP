@@ -1445,7 +1445,7 @@ def mostrar_configuracion(empresa_id, empresa_nombre):
 # Reemplazar la función mostrar_config_general en ui_empresa.py
 
 def mostrar_config_general(empresa_id, empresa_nombre):
-    """Configuración general con panel de backup integrado - COMPLETA"""
+    """Configuración general con panel de backup integrado"""
     from db_utils import (
         get_company_info_complete, update_company_info_complete, 
         save_company_logo, delete_company_logo, validate_company_info,
@@ -1455,7 +1455,7 @@ def mostrar_config_general(empresa_id, empresa_nombre):
     
     st.subheader("Configuración General")
     
-    # PANEL DE BACKUP INTEGRADO - MEJORADO
+    # PANEL DE BACKUP INTEGRADO - DESTACADO
     st.markdown("""
     <div style="
         background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
@@ -1490,16 +1490,27 @@ def mostrar_config_general(empresa_id, empresa_nombre):
         st.metric("Backups", backup_status["total_backups"])
     
     with col3:
-        if backup_status.get("last_backup_time"):
-            st.metric("Último", backup_status["last_backup_time"])
+        if backup_status["last_backup_time"]:
+            # Formatear tiempo desde el formato YYYYMMDD_HHMMSS
+            try:
+                from datetime import datetime
+                time_str = backup_status["last_backup_time"]
+                if "_" in time_str:
+                    date_part, time_part = time_str.split("_")
+                    formatted_time = f"{time_part[:2]}:{time_part[2:4]}"
+                    st.metric("Último", formatted_time)
+                else:
+                    st.metric("Último", "N/A")
+            except:
+                st.metric("Último", "N/A")
         else:
             st.metric("Último", "Nunca")
     
     with col4:
         st.metric("Auto-backup", "✅ Activo")
     
-    # Botones de backup - MODIFICADOS
-    col1, col2, col3, col4 = st.columns(4)
+    # Botones de backup
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         if st.button("💾 Guardar Ahora", type="primary", use_container_width=True):
@@ -1512,7 +1523,7 @@ def mostrar_config_general(empresa_id, empresa_nombre):
                     st.error(f"❌ Error: {message}")
     
     with col2:
-        if st.button("📥 Restaurar Último", type="secondary", use_container_width=True):
+        if st.button("📥 Restaurar desde Nube", type="secondary", use_container_width=True):
             if "restore_confirm" not in st.session_state:
                 st.session_state.restore_confirm = False
             
@@ -1521,24 +1532,14 @@ def mostrar_config_general(empresa_id, empresa_nombre):
                 st.rerun()
     
     with col3:
-        # NUEVO: Botón para ver todos los backups
-        if st.button("📋 Ver Backups", use_container_width=True):
-            st.session_state.show_all_backups = not st.session_state.get('show_all_backups', False)
-            st.rerun()
-    
-    with col4:
         if backup_status["connected"]:
             st.success("🔄 Auto: 10 min")
         else:
             st.error("🔄 Auto: OFF")
     
-    # NUEVO: Panel de todos los backups
-    if st.session_state.get("show_all_backups", False):
-        mostrar_selector_backups_github()
-    
-    # Confirmación de restauración del último backup
+    # Confirmación de restauración
     if st.session_state.get("restore_confirm", False):
-        st.warning("⚠️ **RESTAURAR ÚLTIMO BACKUP**")
+        st.warning("⚠️ **RESTAURAR DESDE LA NUBE**")
         st.warning("Esto reemplazará todos los datos actuales con el último backup.")
         
         col1, col2 = st.columns(2)
@@ -1565,7 +1566,7 @@ def mostrar_config_general(empresa_id, empresa_nombre):
     info_tabs = st.tabs(["📋 Información Básica", "🖼️ Logo y Marca"])
     
     with info_tabs[0]:
-        # Código existente de información básica
+        # Tu código existente de información básica aquí...
         company_info = get_company_info_complete(empresa_id)
         if not company_info:
             company_info = {'name': empresa_nombre}
@@ -1695,7 +1696,7 @@ def mostrar_config_general(empresa_id, empresa_nombre):
                         st.error(f"❌ {message}")
     
     with info_tabs[1]:
-        # Código existente de logo
+        # Tu código existente de logo aquí...
         st.markdown("#### Logo de la Empresa")
         
         logo_base64 = get_company_logo_base64(empresa_id)
@@ -3223,200 +3224,3 @@ def mostrar_info_respaldos():
     except Exception as e:
         st.error(f"Error obteniendo estadísticas: {e}")
 
-def mostrar_selector_backups_github():
-    """Mostrar selector de backups específicos de GitHub"""
-    from db_utils import get_github_backup_list, restore_from_selected_github_backup, DB_PATH
-    
-    st.markdown("### 📋 Seleccionar Backup Específico")
-    
-    backups = get_github_backup_list()
-    
-    if not backups:
-        st.warning("No hay backups disponibles en GitHub")
-        return
-    
-    # Mostrar lista de backups
-    st.markdown("**Backups disponibles:**")
-    
-    backup_options = {}
-    for backup in backups:
-        display_text = backup["display_name"]
-        size_mb = backup["size"] / 1024 / 1024 if backup["size"] > 0 else 0
-        if size_mb > 0:
-            display_text += f" ({size_mb:.1f} MB)"
-        
-        backup_options[display_text] = backup
-    
-    selected_backup_display = st.selectbox(
-        "Seleccionar backup:",
-        list(backup_options.keys()),
-        help="Selecciona el backup que deseas restaurar"
-    )
-    
-    if selected_backup_display:
-        selected_backup = backup_options[selected_backup_display]
-        
-        # Mostrar información del backup seleccionado
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Tipo", "Automático" if selected_backup["type"] == "auto" else "Manual")
-        with col2:
-            st.metric("Fecha", selected_backup["date"])
-        with col3:
-            st.metric("Hora", selected_backup["time"])
-        
-        # Botones de acción
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            if st.button("🔄 Restaurar este backup", type="primary"):
-                st.session_state.selected_backup_to_restore = selected_backup
-                st.session_state.restore_specific_step = 1
-                st.rerun()
-        
-        with col2:
-            if st.button("❌ Cerrar selector"):
-                st.session_state.show_all_backups = False
-                st.rerun()
-    
-    # Proceso de confirmación para restauración específica
-    if st.session_state.get("restore_specific_step") == 1:
-        backup_to_restore = st.session_state.get("selected_backup_to_restore")
-        
-        if backup_to_restore:
-            st.error("⚠️ **CONFIRMAR RESTAURACIÓN**")
-            st.error(f"**Backup seleccionado:** {backup_to_restore['display_name']}")
-            st.error("**ESTA ACCIÓN REEMPLAZARÁ TODOS LOS DATOS ACTUALES**")
-            
-            confirm_text = st.text_input("Escriba 'CONFIRMAR' para proceder:")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("✅ RESTAURAR"):
-                    if confirm_text == "CONFIRMAR":
-                        with st.spinner("Restaurando backup seleccionado..."):
-                            success, message = restore_from_selected_github_backup(backup_to_restore, DB_PATH)
-                            if success:
-                                st.success("✅ Restauración exitosa")
-                                st.info("La página se recargará automáticamente...")
-                                
-                                # Limpiar estados
-                                st.session_state.restore_specific_step = 0
-                                st.session_state.selected_backup_to_restore = None
-                                st.session_state.show_all_backups = False
-                                
-                                time.sleep(2)
-                                st.rerun()
-                            else:
-                                st.error(f"❌ Error: {message}")
-                    else:
-                        st.error("Texto de confirmación incorrecto")
-            
-            with col2:
-                if st.button("❌ Cancelar"):
-                    st.session_state.restore_specific_step = 0
-                    st.session_state.selected_backup_to_restore = None
-                    st.rerun()
-
-# ===============================
-# NUEVA FUNCIÓN EN ui_empresa.py - Para la pestaña de Respaldo
-# ===============================
-
-def mostrar_configuracion_backup_github(empresa_id, empresa_nombre):
-    """Configuración avanzada de backups GitHub"""
-    from db_utils import (
-        get_github_retention_limits, update_github_retention_limits, 
-        cleanup_github_backups, get_backup_status
-    )
-    
-    st.subheader("Configuración de Backups GitHub")
-    
-    # Estado actual
-    backup_status = get_backup_status()
-    
-    if not backup_status["connected"]:
-        st.error("❌ No hay conexión con GitHub")
-        st.info("Verifica la configuración de GitHub en los secrets de Streamlit")
-        return
-    
-    # Configuración de límites de retención
-    st.markdown("### ⚙️ Límites de Retención")
-    
-    current_limits = get_github_retention_limits()
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        new_auto_limit = st.number_input(
-            "Backups automáticos a mantener:",
-            min_value=1,
-            max_value=50,
-            value=current_limits["auto"],
-            help="Número de backups automáticos que se mantendrán (1-50)"
-        )
-    
-    with col2:
-        new_manual_limit = st.number_input(
-            "Backups manuales a mantener:",
-            min_value=1,
-            max_value=20,
-            value=current_limits["manual"],
-            help="Número de backups manuales que se mantendrán (1-20)"
-        )
-    
-    if st.button("💾 Guardar Límites"):
-        success = update_github_retention_limits(new_auto_limit, new_manual_limit)
-        if success:
-            st.success("✅ Límites actualizados correctamente")
-            st.rerun()
-        else:
-            st.error("❌ Error al actualizar límites")
-    
-    st.divider()
-    
-    # Limpieza manual
-    st.markdown("### 🧹 Limpieza Manual")
-    st.info("Eliminar backups antiguos que excedan los límites configurados")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.metric("Backups Totales", backup_status["total_backups"])
-    
-    with col2:
-        if st.button("🗑️ Limpiar Backups Antiguos"):
-            with st.spinner("Limpiando backups antiguos..."):
-                success, message = cleanup_github_backups()
-                if success:
-                    st.success(f"✅ {message}")
-                    st.rerun()
-                else:
-                    st.error(f"❌ {message}")
-    
-    st.divider()
-    
-    # Lista de todos los backups
-    st.markdown("### 📋 Todos los Backups")
-    
-    if backup_status["backups_list"]:
-        for backup in backup_status["backups_list"]:
-            col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
-            
-            with col1:
-                st.write(backup["display_name"])
-            
-            with col2:
-                size_mb = backup["size"] / 1024 / 1024 if backup["size"] > 0 else 0
-                st.write(f"{size_mb:.1f} MB")
-            
-            with col3:
-                type_badge = "🤖 Auto" if backup["type"] == "auto" else "👤 Manual"
-                st.write(type_badge)
-            
-            with col4:
-                if st.button("📥", key=f"restore_{backup['timestamp']}", help="Restaurar este backup"):
-                    st.session_state.selected_backup_to_restore = backup
-                    st.session_state.restore_specific_step = 1
-                    st.rerun()
-    else:
-        st.info("No hay backups disponibles")
