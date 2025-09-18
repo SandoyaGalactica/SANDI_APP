@@ -1450,7 +1450,8 @@ def mostrar_config_general(empresa_id, empresa_nombre):
         get_company_info_complete, update_company_info_complete, 
         save_company_logo, delete_company_logo, validate_company_info,
         get_company_logo_base64, get_company_logo_path,
-        get_backup_status, manual_backup_now, restore_from_cloud
+        get_backup_status, manual_backup_database, get_available_backups,
+        restore_database_from_backup
     )
     
     st.subheader("Configuración General")
@@ -1515,7 +1516,7 @@ def mostrar_config_general(empresa_id, empresa_nombre):
     with col1:
         if st.button("💾 Guardar Ahora", type="primary", use_container_width=True):
             with st.spinner("Guardando en la nube..."):
-                success, message = manual_backup_now()
+                success, message = manual_backup_database()
                 if success:
                     st.success("✅ Guardado exitosamente")
                     st.rerun()
@@ -1523,50 +1524,101 @@ def mostrar_config_general(empresa_id, empresa_nombre):
                     st.error(f"❌ Error: {message}")
     
     with col2:
-        if st.button("📥 Restaurar desde Nube", type="secondary", use_container_width=True):
-            if "restore_confirm" not in st.session_state:
-                st.session_state.restore_confirm = False
-            
-            if not st.session_state.restore_confirm:
-                st.session_state.restore_confirm = True
-                st.rerun()
+        if st.button("🔄 Restaurar desde Nube", type="secondary", use_container_width=True):
+            st.session_state.show_restore_options = True
+            st.rerun()
     
     with col3:
         if backup_status["connected"]:
-            st.success("🔄 Auto: 10 min")
+            st.success("🕔 Auto: 10 min")
         else:
-            st.error("🔄 Auto: OFF")
+            st.error("🕔 Auto: OFF")
     
-    # Confirmación de restauración
-    if st.session_state.get("restore_confirm", False):
-        st.warning("⚠️ **RESTAURAR DESDE LA NUBE**")
-        st.warning("Esto reemplazará todos los datos actuales con el último backup.")
+    # Sección para mostrar opciones de restauración
+    if st.session_state.get("show_restore_options", False):
+        st.subheader("Restaurar desde Backup")
+        
+        # Obtener lista de backups disponibles
+        available_backups = get_available_backups()
+        
+        if not available_backups:
+            st.warning("No hay backups disponibles para restaurar")
+        else:
+            # Formatear la lista de backups para mostrar
+            backup_options = []
+            for backup in available_backups:
+                # Extraer información del nombre (formato: sandi_type_YYYYMMDD_HHMMSS.db)
+                name = backup['name']
+                if "_" in name:
+                    parts = name.replace(".db", "").split("_")
+                    if len(parts) >= 4:
+                        backup_type = parts[1]  # auto o manual
+                        date_str = parts[2]
+                        time_str = parts[3]
+                        
+                        # Formatear fecha y hora
+                        formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
+                        formatted_time = f"{time_str[:2]}:{time_str[2:4]}:{time_str[4:]}"
+                        display_name = f"{'Manual' if backup_type == 'manual' else 'Auto'} - {formatted_date} {formatted_time}"
+                    else:
+                        display_name = name
+                else:
+                    display_name = name
+                
+                backup_options.append({"display": display_name, "backup": backup})
+            
+            # Crear un selectbox para elegir el backup
+            selected_backup_idx = st.selectbox(
+                "Seleccionar backup para restaurar:",
+                range(len(backup_options)),
+                format_func=lambda i: backup_options[i]["display"]
+            )
+            
+            selected_backup = backup_options[selected_backup_idx]["backup"]
+            
+            # Mostrar advertencia y botón de confirmación
+            st.warning("⚠️ Al restaurar se reemplazará la base de datos actual con el backup seleccionado.")
+            st.warning("⚠️ Se recomienda hacer un backup manual antes de restaurar.")
+            
+            if st.button("Restaurar Backup Seleccionado", type="primary"):
+                st.session_state.confirm_restore = True
+                st.session_state.backup_to_restore = selected_backup
+                st.rerun()
+    
+    # Confirmación final de restauración
+    if st.session_state.get("confirm_restore", False) and st.session_state.get("backup_to_restore"):
+        backup_to_restore = st.session_state.get("backup_to_restore")
+        st.error(f"⚠️ CONFIRMAR RESTAURACIÓN: {backup_to_restore['name']}")
+        st.error("Esta acción reemplazará todos los datos actuales con el backup seleccionado.")
         
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("✅ Confirmar Restauración"):
+            if st.button("✅ Sí, restaurar este backup"):
                 with st.spinner("Restaurando desde la nube..."):
-                    success, message = restore_from_cloud()
+                    success, message = restore_database_from_backup(backup_to_restore)
                     if success:
                         st.success("✅ Restauración exitosa")
-                        st.info("La página se recargará automáticamente...")
-                        st.session_state.restore_confirm = False
+                        st.session_state.confirm_restore = False
+                        st.session_state.backup_to_restore = None
+                        st.session_state.show_restore_options = False
+                        st.balloons()
                         time.sleep(2)
                         st.rerun()
                     else:
                         st.error(f"❌ Error: {message}")
         with col2:
             if st.button("❌ Cancelar"):
-                st.session_state.restore_confirm = False
+                st.session_state.confirm_restore = False
+                st.session_state.backup_to_restore = None
                 st.rerun()
     
     st.divider()
     
-    # Información de la empresa (mantener el código existente)
+    # InformaciÃ³n de la empresa (mantener el cÃ³digo existente)
     info_tabs = st.tabs(["📋 Información Básica", "🖼️ Logo y Marca"])
     
     with info_tabs[0]:
-        # Tu código existente de información básica aquí...
+        # Tu cÃ³digo existente de informaciÃ³n bÃ¡sica aquÃ­...
         company_info = get_company_info_complete(empresa_id)
         if not company_info:
             company_info = {'name': empresa_nombre}
