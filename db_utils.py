@@ -6963,3 +6963,25 @@ def restore_from_cloud():
         
     except Exception as e:
         return False, f"Error: {str(e)}"
+
+def restore_database_from_backup(backup_info):
+    """Restaura la base de datos desde un backup específico"""
+    if not GITHUB_BACKUP_AVAILABLE:
+        return False, "Sistema de backup no disponible"
+    
+    try:
+        # Crear backup local antes de restaurar (medida de seguridad)
+        import shutil
+        from datetime import datetime
+        
+        if os.path.exists(DB_PATH):
+            backup_local = f"{DB_PATH}.backup_local_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            shutil.copy2(DB_PATH, backup_local)
+            print(f"💾 Backup de seguridad local creado: {backup_local}")
+        
+        # Restaurar desde la nube usando el backup específico
+        success, message = restore_from_github(backup_info, DB_PATH)
+        return success, message
+        
+    except Exception as e:
+        return False, f"Error restaurando backup: {str(e)}"
