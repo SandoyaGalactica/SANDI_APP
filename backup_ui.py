@@ -2,6 +2,8 @@ import streamlit as st
 from datetime import datetime
 
 def mostrar_panel_backup_simple():
+     """Panel simple para gestión de backups"""
+    st.subheader("📤 Sistema de Backup MEJORADO - VERSIÓN NUEVA") 
     """Panel simple para gestión de backups"""
     st.subheader("📤 Sistema de Backup")
     
