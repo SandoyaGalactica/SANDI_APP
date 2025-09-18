@@ -9,6 +9,9 @@ import threading
 import time
 import atexit
 
+DB_PATH = "gestion_empresas.db"
+DATABASE_PATH = DB_PATH  # Alias para mantener compatibilidad
+
 class GitHubBackupManager:
     def __init__(self):
         """Inicializar con tokens desde Streamlit secrets"""
