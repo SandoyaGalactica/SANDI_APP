@@ -1,6 +1,9 @@
 import streamlit as st
 from datetime import datetime
 
+DB_PATH = "gestion_empresas.db"
+DATABASE_PATH = DB_PATH  # Alias para mantener compatibilidad
+
 def mostrar_panel_backup_simple():
      """Panel simple para gestión de backups"""
     st.subheader("📤 Sistema de Backup MEJORADO - VERSIÓN NUEVA") 
