@@ -25,6 +25,8 @@ from datetime import datetime, timedelta
 import streamlit as st
 import time
 import threading
+DB_PATH = "gestion_empresas.db"
+DATABASE_PATH = DB_PATH  # Alias para mantener compatibilidad
 
 import numpy as np
 
@@ -6995,4 +6997,5 @@ def restore_database_from_backup(backup_info):
         
     except Exception as e:
         return False, f"Error restaurando backup: {str(e)}"
+
 
