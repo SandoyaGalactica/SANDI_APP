@@ -1,24 +1,3 @@
-import sqlite3
-import pandas as pd
-from datetime import datetime, timedelta
-import streamlit as st
-import time
-import threading
-import numpy as np
-
-# GitHub backup imports
-try:
-    from github_backup_utils import setup_github_auto_backup, github_manual_backup, get_github_backups, restore_from_github, test_github_connection, stop_auto_backup
-    GITHUB_BACKUP_AVAILABLE = True
-    print("✅ GitHub backup integration disponible")
-except ImportError as e:
-    GITHUB_BACKUP_AVAILABLE = False
-    print(f"⚠️ GitHub backup no disponible: {str(e)}")
-
-# Variables globales
-BACKUP_INITIALIZED = False
-connection_lock = threading.Lock()
-
 def safe_execute_with_retry(operation, max_retries=3, base_delay=0.1):
     """
     Ejecuta una operación de base de datos con reintentos y manejo de bloqueos
@@ -26,12 +5,12 @@ def safe_execute_with_retry(operation, max_retries=3, base_delay=0.1):
     last_error = None
     for attempt in range(max_retries):
         try:
-            with connection_lock:
+            with _connection_lock:
                 return operation()
         except sqlite3.OperationalError as e:
             last_error = e
             if "database is locked" in str(e) and attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt)
+                delay = base_delay * (2 ** attempt)  # Backoff exponencial
                 print(f"Database locked, reintentando en {delay}s (intento {attempt + 1}/{max_retries})")
                 time.sleep(delay)
                 continue
@@ -40,6 +19,32 @@ def safe_execute_with_retry(operation, max_retries=3, base_delay=0.1):
         except Exception as e:
             raise e
     raise last_error
+import sqlite3
+import pandas as pd
+from datetime import datetime, timedelta
+import streamlit as st
+import time
+import threading
+
+import numpy as np
+
+try:
+    from github_backup_utils import (
+        setup_github_auto_backup, 
+        github_manual_backup, 
+        get_github_backups, 
+        restore_from_github,
+        test_github_connection,
+        stop_auto_backup
+    )
+    GITHUB_BACKUP_AVAILABLE = True
+    print("✅ GitHub backup integration disponible")
+except ImportError as e:
+    GITHUB_BACKUP_AVAILABLE = False
+    print(f"⚠️ GitHub backup no disponible: {str(e)}")
+
+# Variable global para controlar el sistema de backup
+BACKUP_INITIALIZED = False
 
 def convert_numpy_types(obj):
     """Convierte tipos numpy a tipos Python nativos para JSON"""
@@ -6773,49 +6778,32 @@ def get_available_backups():
         return []
 
 def get_backup_status():
-    """Obtener estado del sistema de backup - MODIFICADO"""
+    """Obtener estado del sistema de backup"""
     if not GITHUB_BACKUP_AVAILABLE:
         return {
             "available": False,
             "connected": False,
-            "message": "GitHub backup no disponible",
-            "total_backups": 0,
-            "last_backup_time": None,
-            "backups_list": []
+            "message": "GitHub backup no disponible"
         }
     
     try:
         connected, conn_message = test_github_connection()
         backups = get_available_backups()
         
-        # NUEVO: Obtener lista detallada de backups
-        detailed_backups = get_github_backup_list()
-        
-        # NUEVO: Obtener último backup con formato legible
-        last_backup_time = None
-        if detailed_backups:
-            last_backup = detailed_backups[0]
-            last_backup_time = f"{last_backup['date']} {last_backup['time']}"
-        
         return {
             "available": True,
             "connected": connected,
             "last_backup": backups[0]["name"] if backups else None,
-            "last_backup_time": last_backup_time,  # NUEVO
             "total_backups": len(backups),
             "auto_backup_active": BACKUP_INITIALIZED,
-            "message": conn_message,
-            "backups_list": detailed_backups  # NUEVO
+            "message": conn_message
         }
         
     except Exception as e:
         return {
             "available": True,
             "connected": False,
-            "message": f"Error verificando estado: {str(e)}",
-            "total_backups": 0,
-            "last_backup_time": None,
-            "backups_list": []
+            "message": f"Error verificando estado: {str(e)}"
         }
 
 # MODIFICAR tu función existente optimize_db_connection() o crear una nueva función de inicialización:
@@ -6975,48 +6963,3 @@ def restore_from_cloud():
         
     except Exception as e:
         return False, f"Error: {str(e)}"
-
-def get_github_backup_list():
-    """Obtener lista detallada de backups de GitHub"""
-    try:
-        from github_backup_utils import github_backup_manager
-        return github_backup_manager.get_backups_with_details()
-    except Exception as e:
-        print(f"Error obteniendo lista de backups: {e}")
-        return []
-
-def restore_from_selected_github_backup(backup_info, local_path):
-    """Restaurar desde un backup específico de GitHub"""
-    try:
-        from github_backup_utils import github_backup_manager
-        return github_backup_manager.download_backup(backup_info["raw_info"], local_path)
-    except Exception as e:
-        return False, f"Error en restauración: {str(e)}"
-
-def update_github_retention_limits(keep_auto, keep_manual):
-    """Actualizar límites de retención de backups en GitHub"""
-    try:
-        from github_backup_utils import github_backup_manager
-        return github_backup_manager.update_retention_limits(keep_auto, keep_manual)
-    except Exception as e:
-        print(f"Error actualizando límites: {e}")
-        return False
-
-def get_github_retention_limits():
-    """Obtener límites actuales de retención"""
-    try:
-        from github_backup_utils import github_backup_manager
-        return github_backup_manager.get_retention_limits()
-    except Exception as e:
-        return {"auto": 10, "manual": 5}
-
-def cleanup_github_backups():
-    """Limpiar backups antiguos manualmente"""
-    try:
-        from github_backup_utils import github_backup_manager
-        deleted_count = github_backup_manager.cleanup_old_backups()
-        return True, f"Se eliminaron {deleted_count} backups antiguos"
-    except Exception as e:
-        return False, f"Error en limpieza: {str(e)}"
-
-
