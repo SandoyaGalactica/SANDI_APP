@@ -714,10 +714,10 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                     st.warning("Corrija los errores antes de continuar")
                 else:
                     # Todo válido, procesar el despacho
-                    # CORRECCIÓN: Usar procesar_salida_inventario en lugar de _inventario
+                    # Llamar a la función definida en este mismo archivo
                     success, message = procesar_salida_inventario(
                         tank_id,
-                        selected_machine['id'],
+                        int(selected_machine['id']),  # Asegurar que sea entero
                         cantidad_despacho,
                         operador,
                         horas_trabajadas,
@@ -930,6 +930,9 @@ def mostrar_historial_completo(empresa_id, unit_preference):
 def procesar_salida_inventario(tank_id, machine_id, cantidad, operador, horas, odometro, notas, usuario):
     """Procesa una salida de inventario con manejo mejorado de transacciones y validaciones"""
     try:
+        # Asegurar que importamos sqlite3 si se usa en la función
+        import sqlite3
+        
         # Usar UNA SOLA conexión para toda la operación
         with get_conn() as conn:
             # Configurar timeout para esta conexión
@@ -1031,6 +1034,7 @@ def procesar_salida_inventario(tank_id, machine_id, cantidad, operador, horas, o
                 
     except Exception as e:
         return False, f"Error al procesar despacho: {str(e)}"
+
 
 def procesar_entrada_inventario(tank_id, cantidad, costo_unitario, proveedor, referencia, notas, usuario):
     """Procesa una entrada de inventario con manejo mejorado de transacciones"""
@@ -2841,6 +2845,7 @@ def mostrar_configuracion_alertas_tanque(tank_id, empresa_id):
     except Exception as e:
 
         st.error(f"Error mostrando configuración: {str(e)}")
+
 
 
 
