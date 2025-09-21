@@ -878,12 +878,25 @@ def mostrar_formulario_anadir_maquina(empresa_id):
         col5, col6 = st.columns(2)
         with col5:
             purchase_date = st.date_input("Fecha de compra", help="Fecha de adquisición de la máquina")
-            current_hours = st.number_input("Horas actuales", min_value=0.0, step=0.1, format="%.1f", 
-                                          help="Horas actuales en el horómetro")
+            
+            # Campo específico para horómetro
+            current_hours = st.number_input(
+                "Horómetro actual (horas)", 
+                min_value=0.0, 
+                step=0.1, 
+                format="%.1f", 
+                help="Horas actuales en el horómetro de la máquina"
+            )
         
         with col6:
-            current_odometer = st.number_input("Odómetro actual", min_value=0.0, step=0.1, format="%.1f",
-                                             help="Lectura actual del odómetro (para vehículos)")
+            # Campo específico para odómetro
+            current_odometer = st.number_input(
+                "Odómetro actual (km)", 
+                min_value=0.0, 
+                step=0.1, 
+                format="%.1f",
+                help="Lectura actual del odómetro en kilómetros (para vehículos)"
+            )
         
         # Validación
         required_fields = [name, identifier, classification]
@@ -903,7 +916,7 @@ def mostrar_formulario_anadir_maquina(empresa_id):
                         purchase_date.isoformat() if purchase_date else None, 
                         status,
                         current_hours,
-                        current_odometer  # <-- Aquí estaba el error, faltaba la coma
+                        current_odometer
                     )
                     
                     if success:
