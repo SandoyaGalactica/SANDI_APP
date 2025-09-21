@@ -524,7 +524,7 @@ def mostrar_gestion_tanques(empresa_id, unit_preference):
     mostrar_historial_tanque(selected_tank['id'])
 
 def mostrar_despachos_maquinaria(empresa_id, unit_preference):
-    """Gestión de despachos a maquinaria (SALIDAS de inventario) - VERSIÓN CON DEBUG"""
+    """Gestión de despachos a maquinaria (SALIDAS de inventario) - VERSIÓN CORREGIDA"""
     st.subheader("Despachos a Maquinaria")
     
     # Obtener maquinaria activa
@@ -535,23 +535,9 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
         st.info("Para registrar despachos, primero debe tener maquinaria con estado 'Activa' en el módulo de Maquinaria.")
         return
     
-    # Obtener tanques con fluido disponible - ACTUALIZAR CADA VEZ
+    # Obtener tanques con fluido disponible
     tanques = get_company_tanks(empresa_id)
     tanques_disponibles = tanques[tanques['current_level'] > 0.1]
-    
-    # DEBUG: Mostrar información de los tanques
-    st.write("DEBUG - Información de tanques:")
-    st.write(f"Total tanques: {len(tanques)}")
-    st.write(f"Tanques disponibles: {len(tanques_disponibles)}")
-    if not tanques_disponibles.empty:
-        st.write("Columnas disponibles:", tanques_disponibles.columns.tolist())
-        st.write("Primeros tanques:", tanques_disponibles[['fluid_name', 'current_level']].head())
-        # Verificar si existe columna 'id'
-        if 'id' in tanques_disponibles.columns:
-            st.write("IDs de tanques:", tanques_disponibles['id'].tolist())
-        else:
-            st.error("PROBLEMA: No existe columna 'id' en tanques_disponibles")
-            st.write("Todas las columnas:", tanques_disponibles.columns.tolist())
     
     if tanques_disponibles.empty:
         st.warning("No hay fluidos disponibles en los tanques.")
@@ -612,54 +598,13 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                 help="Seleccione el tipo de fluido a despachar"
             )
             
+            # CORRECCIÓN: Obtener el tanque seleccionado directamente del DataFrame
             selected_fluid_tank = tanques_disponibles.iloc[selected_tank_idx]
             
-            # DEBUG: Mostrar información del tanque seleccionado
-            st.write("DEBUG - Tanque seleccionado:")
-            st.write(f"Índice seleccionado: {selected_tank_idx}")
-            st.write(f"Datos del tanque: {selected_fluid_tank.to_dict()}")
+            # PUNTO CRÍTICO: Asegurar que tank_id sea un entero para evitar errores de tipo
+            tank_id = int(selected_fluid_tank['id'])
             
-            # Verificar si tiene ID
-            if 'id' in selected_fluid_tank:
-                tank_id = selected_fluid_tank['id']
-                st.write(f"Tank ID encontrado: {tank_id}")
-            else:
-                st.error("PROBLEMA: El tanque seleccionado no tiene columna 'id'")
-                # Intentar alternativas
-                possible_id_columns = [col for col in selected_fluid_tank.index if 'id' in col.lower()]
-                st.write(f"Posibles columnas de ID: {possible_id_columns}")
-                if possible_id_columns:
-                    tank_id = selected_fluid_tank[possible_id_columns[0]]
-                    st.write(f"Usando columna alternativa: {possible_id_columns[0]} = {tank_id}")
-                else:
-                    st.stop()
-            
-            # ACTUALIZAR NIVEL EN TIEMPO REAL - Volver a consultar la BD
-            try:
-                with get_conn() as conn:
-                    current_tank_data = pd.read_sql_query("""
-                        SELECT current_level, tank_capacity 
-                        FROM company_fluid_tanks 
-                        WHERE id = ?
-                    """, conn, params=(tank_id,))
-                    
-                    st.write(f"DEBUG - Consulta BD con tank_id={tank_id}")
-                    st.write(f"Resultado consulta: {current_tank_data.to_dict() if not current_tank_data.empty else 'VACÍO'}")
-                    
-                    if not current_tank_data.empty:
-                        current_level = current_tank_data.iloc[0]['current_level']
-                        tank_capacity = current_tank_data.iloc[0]['tank_capacity']
-                        # Actualizar el valor en selected_fluid_tank
-                        selected_fluid_tank = selected_fluid_tank.copy()
-                        selected_fluid_tank['current_level'] = current_level
-                        selected_fluid_tank['tank_capacity'] = tank_capacity
-                        st.success(f"Nivel actualizado: {current_level:.1f}/{tank_capacity:.1f}")
-                    else:
-                        st.error(f"No se encontró tanque con ID {tank_id} en la base de datos")
-            except Exception as e:
-                st.error(f"Error consultando BD: {str(e)}")
-            
-            # Mostrar gráfico de nivel del tanque seleccionado - ACTUALIZADO
+            # Mostrar gráfico de nivel del tanque seleccionado
             percentage = calculate_tank_percentage(selected_fluid_tank)
             st.progress(percentage / 100, text=f"Nivel del tanque: {percentage:.1f}%")
         
@@ -738,7 +683,7 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
             help="Información adicional sobre el despacho"
         )
         
-        # Botón de confirmación - SIEMPRE ACTIVO con validación posterior
+        # Botón de confirmación
         col_btn = st.columns([1, 2, 1])[1]
         with col_btn:
             if st.button(
@@ -746,13 +691,6 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                 type="primary",
                 use_container_width=True
             ):
-                # DEBUG: Mostrar qué se va a enviar
-                st.write("DEBUG - Datos para procesar_salida_inventario:")
-                st.write(f"tank_id: {tank_id} (tipo: {type(tank_id)})")
-                st.write(f"machine_id: {selected_machine['id']} (tipo: {type(selected_machine['id'])})")
-                st.write(f"cantidad: {cantidad_despacho}")
-                st.write(f"operador: '{operador}'")
-                
                 # VALIDACIÓN DESPUÉS de presionar el botón
                 errores = []
                 
@@ -769,9 +707,6 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                 if selected_machine is None:
                     errores.append("Debe seleccionar una máquina")
                     
-                if selected_fluid_tank is None:
-                    errores.append("Debe seleccionar un fluido")
-                
                 # Si hay errores, mostrarlos
                 if errores:
                     for error in errores:
@@ -779,8 +714,9 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                     st.warning("Corrija los errores antes de continuar")
                 else:
                     # Todo válido, procesar el despacho
+                    # CORRECCIÓN: Usar el tank_id directamente como entero
                     success, message = procesar_salida_inventario(
-                        tank_id,  # Usar la variable verificada
+                        tank_id,
                         selected_machine['id'],
                         cantidad_despacho,
                         operador,
@@ -2897,5 +2833,6 @@ def mostrar_configuracion_alertas_tanque(tank_id, empresa_id):
     except Exception as e:
 
         st.error(f"Error mostrando configuración: {str(e)}")
+
 
 
