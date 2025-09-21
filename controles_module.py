@@ -524,41 +524,31 @@ def mostrar_gestion_tanques(empresa_id, unit_preference):
     mostrar_historial_tanque(selected_tank['id'])
 
 def mostrar_despachos_maquinaria(empresa_id, unit_preference):
-    """Gestión de despachos a maquinaria (SALIDAS de inventario) - VERSIÓN CORREGIDA"""
+    """Gestión de despachos a maquinaria (SALIDAS de inventario) - VERSIÓN CORREGIDA COMPLETA"""
     st.subheader("Despachos a Maquinaria")
     
     # Obtener maquinaria activa
     maquinas = get_active_machinery(empresa_id)
     
     if maquinas.empty:
-        st.warning("⚠️ No hay maquinaria activa registrada.")
+        st.warning("No hay maquinaria activa registrada.")
         st.info("Para registrar despachos, primero debe tener maquinaria con estado 'Activa' en el módulo de Maquinaria.")
         return
     
-    # Obtener tanques con fluido disponible
+    # Obtener tanques con fluido disponible - ACTUALIZAR CADA VEZ
     tanques = get_company_tanks(empresa_id)
     tanques_disponibles = tanques[tanques['current_level'] > 0.1]
     
     if tanques_disponibles.empty:
-        st.warning("⚠️ No hay fluidos disponibles en los tanques.")
+        st.warning("No hay fluidos disponibles en los tanques.")
         st.info("Para realizar despachos, primero debe tener inventario en los tanques. Vaya a la sección 'Tanques' para reabastecerlos.")
         return
     
     # Sección principal dividida en pestañas
-    tab1, tab2 = st.tabs(["🚛 Nuevo Despacho", "📊 Historial de Despachos"])
+    tab1, tab2 = st.tabs(["Nuevo Despacho", "Historial de Despachos"])
     
     with tab1:
         st.markdown("### Registrar Nuevo Despacho")
-        
-        # Inicializar estados de sesión para el formulario
-        if "selected_machine_idx" not in st.session_state:
-            st.session_state.selected_machine_idx = 0
-        if "selected_tank_idx" not in st.session_state:
-            st.session_state.selected_tank_idx = 0
-        if "despacho_cantidad" not in st.session_state:
-            st.session_state.despacho_cantidad = 1.0
-        if "despacho_operador" not in st.session_state:
-            st.session_state.despacho_operador = ""
         
         # Preparar opciones de máquinas
         machine_options = []
@@ -580,7 +570,7 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
             display_name = f"{tank['fluid_name']} (Disponible: {tank['current_level']:.1f} {unit_preference})"
             tank_options.append(display_name)
         
-        # Formulario FUERA de st.form para validación en tiempo real
+        # Primera fila: Máquina y Fluido
         col1, col2 = st.columns(2)
         
         with col1:
@@ -589,19 +579,13 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                 "Máquina:", 
                 range(len(machine_options)),
                 format_func=lambda x: machine_options[x],
-                key="machine_selector",
                 help="Seleccione la máquina que recibirá el fluido"
             )
-            
-            # Actualizar índice seleccionado
-            if selected_machine_idx != st.session_state.selected_machine_idx:
-                st.session_state.selected_machine_idx = selected_machine_idx
-                st.rerun()
             
             selected_machine = maquinas.iloc[selected_machine_idx]
             
             # Mostrar información adicional de la máquina
-            st.info(f"🔧 **{selected_machine['name']}**\n"
+            st.info(f"**{selected_machine['name']}**\n"
                    f"• Matrícula: {selected_machine.get('identifier', 'No asignada')}\n"
                    f"• Clasificación: {selected_machine.get('classification', 'No especificada')}")
         
@@ -611,18 +595,29 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                 "Fluido:", 
                 range(len(tank_options)),
                 format_func=lambda x: tank_options[x],
-                key="tank_selector",
                 help="Seleccione el tipo de fluido a despachar"
             )
             
-            # Actualizar índice seleccionado y forzar actualización
-            if selected_tank_idx != st.session_state.selected_tank_idx:
-                st.session_state.selected_tank_idx = selected_tank_idx
-                st.rerun()
-            
             selected_fluid_tank = tanques_disponibles.iloc[selected_tank_idx]
             
-            # Mostrar gráfico de nivel del tanque seleccionado - SE ACTUALIZA EN TIEMPO REAL
+            # ACTUALIZAR NIVEL EN TIEMPO REAL - Volver a consultar la BD
+            tank_id = selected_fluid_tank['id']
+            with get_conn() as conn:
+                current_tank_data = pd.read_sql_query("""
+                    SELECT current_level, tank_capacity 
+                    FROM company_fluid_tanks 
+                    WHERE id = ?
+                """, conn, params=(tank_id,))
+                
+                if not current_tank_data.empty:
+                    current_level = current_tank_data.iloc[0]['current_level']
+                    tank_capacity = current_tank_data.iloc[0]['tank_capacity']
+                    # Actualizar el valor en selected_fluid_tank
+                    selected_fluid_tank = selected_fluid_tank.copy()
+                    selected_fluid_tank['current_level'] = current_level
+                    selected_fluid_tank['tank_capacity'] = tank_capacity
+            
+            # Mostrar gráfico de nivel del tanque seleccionado - ACTUALIZADO
             percentage = calculate_tank_percentage(selected_fluid_tank)
             st.progress(percentage / 100, text=f"Nivel del tanque: {percentage:.1f}%")
         
@@ -640,34 +635,23 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                 step=0.1,
                 format="%.2f",
                 value=min(10.0, max_available),
-                key="cantidad_input",
                 help=f"Máximo disponible: {max_available:.1f} {unit_preference}"
             )
-            
-            # Actualizar cantidad en estado de sesión
-            if cantidad_despacho != st.session_state.despacho_cantidad:
-                st.session_state.despacho_cantidad = cantidad_despacho
             
             # Mostrar consumo estimado si está disponible
             if 'consumption_per_hour' in selected_machine:
                 consumption_rate = selected_machine['consumption_per_hour']
                 if consumption_rate > 0:
                     horas_estimadas = cantidad_despacho / consumption_rate
-                    st.caption(f"⏱️ Duración estimada: {horas_estimadas:.1f} horas")
+                    st.caption(f"Duración estimada: {horas_estimadas:.1f} horas")
         
         with col4:
             st.markdown("**Información Operacional:**")
             operador = st.text_input(
                 "Operador", 
-                value=st.session_state.despacho_operador,
-                key="operador_input",
                 placeholder="Nombre del operador",
                 help="Nombre de la persona que opera la máquina"
             )
-            
-            # Actualizar operador en estado de sesión
-            if operador != st.session_state.despacho_operador:
-                st.session_state.despacho_operador = operador
             
             horas_trabajadas = st.number_input(
                 "Horas trabajadas estimadas", 
@@ -675,7 +659,6 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                 max_value=24.0,
                 step=0.5, 
                 format="%.1f",
-                key="horas_input",
                 help="Horas que se espera trabajar con este combustible"
             )
         
@@ -688,7 +671,6 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                 min_value=0.0, 
                 step=0.1, 
                 format="%.1f",
-                key="odometro_input",
                 help="Lectura actual del odómetro o horómetro de la máquina"
             )
         
@@ -699,52 +681,55 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
             last_hours = current_values.get('current_hours', 0)
             
             if last_odometer > 0 or last_hours > 0:
-                st.info(f"📊 Lecturas anteriores:\n"
+                st.info(f"Lecturas anteriores:\n"
                        f"• Odómetro: {last_odometer:.1f}\n" 
                        f"• Horas: {last_hours:.1f}")
                 
                 # Validar que la nueva lectura sea mayor
                 if odometro_actual > 0 and odometro_actual < max(last_odometer, last_hours):
-                    st.warning("⚠️ La nueva lectura es menor que la anterior")
+                    st.warning("La nueva lectura es menor que la anterior")
         
         # Cuarta fila: Notas
         notas_despacho = st.text_area(
             "Notas del despacho",
-            key="notas_input",
             placeholder="Observaciones, ubicación de trabajo, condiciones especiales, etc.",
             help="Información adicional sobre el despacho"
         )
         
-        # VALIDACIÓN EN TIEMPO REAL - FUERA DEL FORMULARIO
-        despacho_valido = (
-            selected_machine is not None and 
-            selected_fluid_tank is not None and 
-            cantidad_despacho > 0 and 
-            cantidad_despacho <= max_available and
-            operador.strip() != ""
-        )
-        
-        # Mostrar estado de validación en tiempo real
-        if not despacho_valido:
-            if operador.strip() == "":
-                st.error("❌ Falta el nombre del operador")
-            if cantidad_despacho <= 0:
-                st.error("❌ La cantidad debe ser mayor a 0")
-            if cantidad_despacho > max_available:
-                st.error(f"❌ La cantidad ({cantidad_despacho:.1f}) excede lo disponible ({max_available:.1f})")
-        
-        # Botón de confirmación CON VALIDACIÓN EN TIEMPO REAL
+        # Botón de confirmación - SIEMPRE ACTIVO con validación posterior
         col_btn = st.columns([1, 2, 1])[1]
         with col_btn:
             if st.button(
-                "🚛 Realizar Despacho", 
-                disabled=not despacho_valido,
+                "Realizar Despacho", 
                 type="primary",
-                use_container_width=True,
-                key="despacho_btn"
+                use_container_width=True
             ):
-                if despacho_valido:
-                    # Procesar el despacho
+                # VALIDACIÓN DESPUÉS de presionar el botón
+                errores = []
+                
+                # Validar campos obligatorios
+                if not operador.strip():
+                    errores.append("Falta el nombre del operador")
+                
+                if cantidad_despacho <= 0:
+                    errores.append("La cantidad debe ser mayor a 0")
+                
+                if cantidad_despacho > max_available:
+                    errores.append(f"La cantidad ({cantidad_despacho:.1f}) excede lo disponible ({max_available:.1f})")
+                
+                if selected_machine is None:
+                    errores.append("Debe seleccionar una máquina")
+                    
+                if selected_fluid_tank is None:
+                    errores.append("Debe seleccionar un fluido")
+                
+                # Si hay errores, mostrarlos
+                if errores:
+                    for error in errores:
+                        st.error(f"❌ {error}")
+                    st.warning("Corrija los errores antes de continuar")
+                else:
+                    # Todo válido, procesar el despacho
                     success, message = procesar_salida_inventario(
                         selected_fluid_tank['id'],
                         selected_machine['id'],
@@ -761,33 +746,27 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                         st.balloons()
                         
                         # Mostrar resumen del despacho
-                        st.info(f"📋 **Resumen del despacho:**\n"
+                        st.info(f"**Resumen del despacho:**\n"
                                f"• Máquina: {selected_machine['name']}\n"
                                f"• Fluido: {selected_fluid_tank['fluid_name']}\n" 
                                f"• Cantidad: {cantidad_despacho:.1f} {unit_preference}\n"
                                f"• Operador: {operador}")
                         
-                        # Limpiar estados del formulario
-                        st.session_state.despacho_operador = ""
-                        st.session_state.despacho_cantidad = 1.0
-                        
                         # Pausa y recarga
                         import time
-                        time.sleep(1)
+                        time.sleep(2)
                         st.rerun()
                     else:
                         st.error(f"❌ {message}")
-                else:
-                    st.error("❌ Complete todos los campos obligatorios")
         
         # Información adicional
-        with st.expander("ℹ️ Información sobre despachos"):
+        with st.expander("Información sobre despachos"):
             st.markdown("""
             **Campos obligatorios:**
-            - ✅ Máquina seleccionada
-            - ✅ Fluido disponible seleccionado  
-            - ✅ Cantidad mayor a 0 y no exceder disponible
-            - ✅ Nombre del operador
+            - Máquina seleccionada
+            - Fluido disponible seleccionado  
+            - Cantidad mayor a 0 y no exceder disponible
+            - Nombre del operador
             
             **Campos opcionales:**
             - Horas trabajadas estimadas
@@ -821,7 +800,7 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
     st.divider()
     
     # Resumen de despachos del día actual
-    st.subheader("📊 Resumen de Despachos Hoy")
+    st.subheader("Resumen de Despachos Hoy")
     mostrar_resumen_despachos_hoy(empresa_id, unit_preference)
 
 def mostrar_historial_completo(empresa_id, unit_preference):
@@ -2869,4 +2848,5 @@ def mostrar_configuracion_alertas_tanque(tank_id, empresa_id):
     except Exception as e:
 
         st.error(f"Error mostrando configuración: {str(e)}")
+
 
