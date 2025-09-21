@@ -715,7 +715,7 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                 else:
                     # Todo válido, procesar el despacho
                     # CORRECCIÓN: Usar el tank_id directamente como entero
-                    success, message = procesar_salida_inventario(
+                    success, message = _inventario(
                         tank_id,
                         selected_machine['id'],
                         cantidad_despacho,
@@ -928,22 +928,30 @@ def mostrar_historial_completo(empresa_id, unit_preference):
             """)
 
 def procesar_salida_inventario(tank_id, machine_id, cantidad, operador, horas, odometro, notas, usuario):
-    """Procesa una salida de inventario con manejo mejorado de transacciones"""
+    """Procesa una salida de inventario con manejo mejorado de transacciones y validaciones"""
     try:
         # Usar UNA SOLA conexión para toda la operación
         with get_conn() as conn:
             # Configurar timeout para esta conexión
             conn.execute("PRAGMA busy_timeout=30000")  # 30 segundos
             
-            # 1. Validar disponibilidad del tanque
+            # 1. Validar que la máquina existe
+            machine_check = pd.read_sql_query("""
+                SELECT id FROM machinery WHERE id = ?
+            """, conn, params=(machine_id,))
+            
+            if machine_check.empty:
+                return False, f"Máquina con ID {machine_id} no encontrada en la base de datos"
+            
+            # 2. Validar que el tanque existe y tiene suficiente fluido
             tank_info = pd.read_sql_query("""
                 SELECT id, current_level, unit
-                FROM company_fluid_tanks
+                FROM company_fluid_tanks 
                 WHERE id = ?
             """, conn, params=(tank_id,))
             
             if tank_info.empty:
-                return False, "Tanque no encontrado"
+                return False, f"Tanque con ID {tank_id} no encontrado en la base de datos"
             
             tank = tank_info.iloc[0]
             current_level = float(tank['current_level'])
@@ -951,27 +959,27 @@ def procesar_salida_inventario(tank_id, machine_id, cantidad, operador, horas, o
             if current_level < float(cantidad):
                 return False, f"Inventario insuficiente. Disponible: {current_level:.1f} {tank['unit']}"
             
-            # 2. Iniciar transacción explícita
+            # 3. Iniciar transacción explícita
             conn.execute("BEGIN IMMEDIATE")
             
             try:
                 new_level = current_level - float(cantidad)
                 
-                # 3. Actualizar nivel del tanque
+                # 4. Actualizar nivel del tanque
                 conn.execute("""
                     UPDATE company_fluid_tanks 
                     SET current_level = ?
                     WHERE id = ?
                 """, (new_level, tank_id))
                 
-                # 4. Registrar movimiento de salida
+                # 5. Registrar movimiento de salida
                 conn.execute("""
                     INSERT INTO fluid_inventory_movements 
                     (tank_id, movement_type, quantity, machinery_id, operator, notes, created_by)
                     VALUES (?, 'SALIDA', ?, ?, ?, ?, ?)
                 """, (tank_id, cantidad, machine_id, operador, notas, usuario))
                 
-                # 5. Actualizar odómetro directamente usando la misma lógica que db_utils
+                # 6. Actualizar odómetro si se proporcionó
                 if odometro > 0:
                     # Obtener valor actual y validar
                     cursor = conn.cursor()
@@ -1004,7 +1012,7 @@ def procesar_salida_inventario(tank_id, machine_id, cantidad, operador, horas, o
                         # La tabla no existe, continuar sin log por ahora
                         pass
                 
-                # 6. Actualizar horómetro si se proporcionó
+                # 7. Actualizar horómetro si se proporcionó
                 if horas > 0:
                     conn.execute("""
                         UPDATE machinery 
@@ -1012,7 +1020,7 @@ def procesar_salida_inventario(tank_id, machine_id, cantidad, operador, horas, o
                         WHERE id = ?
                     """, (horas, machine_id))
                 
-                # 7. Commit de toda la transacción
+                # 8. Commit de toda la transacción
                 conn.commit()
                 return True, f"Despacho realizado. Nivel restante: {new_level:.1f} {tank['unit']}"
                 
@@ -2833,6 +2841,7 @@ def mostrar_configuracion_alertas_tanque(tank_id, empresa_id):
     except Exception as e:
 
         st.error(f"Error mostrando configuración: {str(e)}")
+
 
 
 
