@@ -714,8 +714,8 @@ def mostrar_despachos_maquinaria(empresa_id, unit_preference):
                     st.warning("Corrija los errores antes de continuar")
                 else:
                     # Todo válido, procesar el despacho
-                    # CORRECCIÓN: Usar el tank_id directamente como entero
-                    success, message = _inventario(
+                    # CORRECCIÓN: Usar procesar_salida_inventario en lugar de _inventario
+                    success, message = procesar_salida_inventario(
                         tank_id,
                         selected_machine['id'],
                         cantidad_despacho,
@@ -2841,6 +2841,7 @@ def mostrar_configuracion_alertas_tanque(tank_id, empresa_id):
     except Exception as e:
 
         st.error(f"Error mostrando configuración: {str(e)}")
+
 
 
 
