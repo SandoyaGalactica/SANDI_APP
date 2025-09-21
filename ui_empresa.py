@@ -2332,8 +2332,7 @@ def reiniciar_sistema_completo():
                 
                 # Insertar clasificaciones básicas
                 basic_classifications = [
-                    'Excavadora', 'Bulldozer', 'Camión', 'Grúa', 
-                    'Compactadora', 'Cargador', 'Motoniveladora', 'Otros'
+                    'Equipo Liviano', 'Equipo Pesado', 'Camión', 'Plantas Industriales', 'Otros'
                 ]
                 
                 for classification in basic_classifications:
